@@ -1,0 +1,119 @@
+apply plugin: 'com.android.library'
+apply plugin: 'com.jfrog.bintray'
+apply plugin: 'com.github.dcendents.android-maven'
+
+group = 'com.thrd.android'
+version = '1.0'
+
+ext {
+    PUBLISH_GROUP_ID = 'com.thrd.android'
+    PUBLISH_ARTIFACT_ID = 'masked-edittext'
+    PUBLISH_VERSION = project.version
+}
+
+
+android {
+    compileSdkVersion 23
+    buildToolsVersion "23.0.2"
+
+    defaultConfig {
+        minSdkVersion 10
+        targetSdkVersion 23
+        versionCode 1
+        versionName project.version
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+
+dependencies {
+    compile 'com.android.support:appcompat-v7:23.1.1'
+    testCompile 'junit:junit:4.12'
+}
+
+def siteUrl = 'https://github.com/pinball83/Masked-EditText'      // Homepage URL of the library
+def gitUrl = 'https://github.com/pinball83/Masked-EditText.git'   // Git repository URL
+
+Properties properties = new Properties()
+properties.load(project.rootProject.file('local.properties').newDataInputStream())
+
+install {
+    repositories.mavenInstaller {
+        pom {
+            project {
+                packaging 'aar'
+                name 'Android library contain custom realisation of EditText component for masking and formatting input text'
+
+                url siteUrl
+                licenses {
+                    license {
+                        name 'LGPL 2.1'
+                        url 'http://opensource.org/licenses/lgpl-2.1.php'
+                    }
+                }
+                developers {
+                    developer {
+                        id 'pinball83'
+                        name 'Evgeny Safronov'
+                        email 'raggamuffin.idna.shell@gmail.com'
+                    }
+                }
+                scm {
+                    connection 'https://github.com/pinball83/Masked-EditText.git'
+                    developerConnection 'https://github.com/pinball83/Masked-EditText.git'
+                    url siteUrl
+
+                }
+            }
+            version = project.version
+        }
+    }
+}
+
+task sourcesJar(type: Jar) {
+    from android.sourceSets.main.java.srcDirs
+    classifier = 'sources'
+}
+
+task javadoc(type: Javadoc) {
+    source = android.sourceSets.main.java.srcDirs
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+}
+
+//task javadocJar(type: Jar, dependsOn: javadoc) {
+//    classifier = 'javadoc'
+//    from javadoc.destinationDir
+//}
+artifacts {
+//    archives javadocJar
+    archives sourcesJar
+}
+
+task findConventions << {
+    println project.getConvention()
+}
+
+bintray {
+    user = properties.getProperty("bintray.user")
+    key = properties.getProperty("bintray.apikey")
+    pkg {
+        repo = 'maven'
+        name = 'masked-edittext'
+        websiteUrl = siteUrl
+        vcsUrl = gitUrl
+        licenses = ['Apache-2.0']
+        publicDownloadNumbers = true
+        publish = true
+        desc = 'Android library contain custom realisation of EditText component for masking and formatting input text'
+        labels = ['android', 'edittext', 'masked-edittext', 'formatting']
+        publicDownloadNumbers = true
+        version {
+            name = project.version
+        }
+    }
+}
