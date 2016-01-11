@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        >
+
+    <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingLeft="@dimen/activity_horizontal_margin"
+            android:paddingRight="@dimen/activity_horizontal_margin"
+            android:paddingTop="@dimen/activity_vertical_margin"
+            android:paddingBottom="@dimen/activity_vertical_margin"
+            android:id="@+id/container"
+            tools:context="com.github.pinball83.app.MainActivity"
+            android:orientation="vertical">
+
+        <com.github.pinball83.maskededittext.MaskedEditText
+                android:id="@+id/masked_edit_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                app:mask="8 (***) *** **-**"
+                app:notMaskedSymbol="*"
+                app:maskIcon="@drawable/abc_ic_clear_mtrl_alpha"
+                app:maskIconColor="@color/colorPrimary"
+                />
+
+    </LinearLayout>
+</ScrollView>
