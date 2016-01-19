@@ -16,12 +16,12 @@
     <dependency>
       <groupId>com.github.pinball83</groupId>
       <artifactId>masked-edittext</artifactId>
-      <version>1.0.1</version>
+      <version>1.0.2</version>
       <type>aar</type>
     </dependency>
 ##Gradle
 
-    compile 'com.github.pinball83:masked-edittext:1.0.1'
+    compile 'com.github.pinball83:masked-edittext:1.0.2'
     
 #Usage
 ###Quick start
