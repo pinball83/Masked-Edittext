@@ -32,7 +32,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onIconPushed() {
                 System.out.println("Icon pushed");
-                Toast.makeText(MainActivity.this, "Un masked text " + maskedEditText1.getUnmaskedText(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Unmasked text " + maskedEditText1.getUnmaskedText(), Toast.LENGTH_SHORT).show();
             }
         });
 
