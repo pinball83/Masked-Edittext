@@ -51,6 +51,11 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
         init(context, mask, notMaskedSymbol, null, null, null);
     }
 
+    public MaskedEditText(Context context, String mask, String notMaskedSymbol, Drawable maskIcon) {
+        super(context);
+        init(context, mask, notMaskedSymbol, null, maskIcon, null);
+    }
+
     public MaskedEditText(Context context, String mask, String notMaskedSymbol, Drawable maskIcon, MaskIconCallback maskIconCallback) {
         super(context);
         init(context, mask, notMaskedSymbol, null, maskIcon, maskIconCallback);

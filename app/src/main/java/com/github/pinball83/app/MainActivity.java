@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.InputType;
 import android.widget.LinearLayout;
+import android.widget.Toast;
 import com.github.pinball83.maskededittext.MaskedEditText;
 
 public class MainActivity extends AppCompatActivity {
@@ -17,21 +18,23 @@ public class MainActivity extends AppCompatActivity {
         maskedEditText.setMaskIconCallback(new MaskedEditText.MaskIconCallback() {
             @Override
             public void onIconPushed() {
-//                System.out.println("unmasked text = " + maskedEditText.getUnmaskedText());
+                System.out.println("clear text");
+                maskedEditText.setMaskedText("          ");
             }
         });
 
-        MaskedEditText maskedEditText1 = new MaskedEditText(this,
+        final MaskedEditText maskedEditText1 = new MaskedEditText(this,
                 "8 (***) *** **-**",
                 "*",
-                getResources().getDrawable(R.drawable.ic_account_circle),
-                new MaskedEditText.MaskIconCallback() {
-                    @Override
-                    public void onIconPushed() {
-                        System.out.println("Icon pushed");
-                    }
-                });
+                getResources().getDrawable(R.drawable.ic_account_circle));
         maskedEditText1.setInputType(InputType.TYPE_CLASS_NUMBER);
+        maskedEditText1.setMaskIconCallback(new MaskedEditText.MaskIconCallback() {
+            @Override
+            public void onIconPushed() {
+                System.out.println("Icon pushed");
+                Toast.makeText(MainActivity.this, "Un masked text " + maskedEditText1.getUnmaskedText(), Toast.LENGTH_SHORT).show();
+            }
+        });
 
         MaskedEditText editText1 = new MaskedEditText(this, "8 (***) *** **-**", "*");
         editText1.setInputType(InputType.TYPE_CLASS_NUMBER);
@@ -54,7 +57,6 @@ public class MainActivity extends AppCompatActivity {
         thirdEditText.setInputType(InputType.TYPE_CLASS_NUMBER);
 
         MaskedEditText thirdEditText1 = new MaskedEditText(this, "***4***", "*");
-//        thirdEditText1.setEnabled(false);
         thirdEditText1.setMaskedText("888488");
         thirdEditText1.setInputType(InputType.TYPE_CLASS_NUMBER);
 
