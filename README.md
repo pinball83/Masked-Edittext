@@ -1,5 +1,5 @@
 # Masked-Edittext
-[ ![Download](https://api.bintray.com/packages/pinball83/maven/masked-edittext/images/download.svg) ](https://bintray.com/pinball83/maven/masked-edittext/_latestVersion) [![Android Arsenal](https://img.shields.io/badge/Android%20Arsenal-Masked--Edittext-green.svg?style=true)](https://android-arsenal.com/details/1/3033)
+[ ![Download](https://api.bintray.com/packages/pinball83/maven/masked-edittext/images/download.svg) ](https://bintray.com/pinball83/maven/masked-edittext/_latestVersion) [![Android Arsenal](https://img.shields.io/badge/Android%20Arsenal-Masked--Edittext-green.svg?style=true)](https://android-arsenal.com/details/1/3033) [![Android Gems](http://www.android-gems.com/badge/pinball83/Masked-Edittext.svg?branch=master)](http://www.android-gems.com/lib/pinball83/Masked-Edittext)
  
  Masked-Edittext android library EditText widget wrapper add masking and formatting input text functionality.
  
@@ -16,12 +16,12 @@
     <dependency>
       <groupId>com.github.pinball83</groupId>
       <artifactId>masked-edittext</artifactId>
-      <version>1.0.2</version>
+      <version>1.0.3</version>
       <type>aar</type>
     </dependency>
 ##Gradle
 
-    compile 'com.github.pinball83:masked-edittext:1.0.2'
+    compile 'com.github.pinball83:masked-edittext:1.0.3'
     
 #Usage
 ###Quick start
