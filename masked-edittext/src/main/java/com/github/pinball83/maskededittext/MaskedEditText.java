@@ -336,8 +336,15 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
                         skipSymbol(index);
 
                     } else {
-                        if (dstart != mask.length())
-                            skipSymbol(dstart);
+                        if (dstart != mask.length()) {
+                            int index;
+                            if (!isCharAllowed(dstart))
+                                index = dstart + 1;
+                            else
+                                index = dstart;
+                            int position = skipSymbol(index);
+                            MaskedEditText.this.getText().replace(position, position, Character.toString(currentChar));
+                        }
                     }
                 }
                 if (isUserInput && TextUtils.isEmpty(source)) {//deletion detection
@@ -358,11 +365,12 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
             return source;
         }
 
-        private void skipSymbol(int index) {
+        private int skipSymbol(int index) {
             int position = getNextAvailablePosition(index, false);
             if (position > lastAllowedPosition)
                 position = lastAllowedPosition;
             setSelection(position);
+            return position;
         }
 
 
