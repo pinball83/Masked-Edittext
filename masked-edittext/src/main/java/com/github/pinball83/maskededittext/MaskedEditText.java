@@ -208,9 +208,17 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
     }
 
     public void setMaskedText(String input) {
-        if ((input != null) && (input.length() == listValidCursorPositions.size())) {
-            StringBuffer buffer = new StringBuffer(input);
+        if (input != null) {
+            StringBuilder filteredInputBuilder = new StringBuilder(input);
+            if(filteredInputBuilder.length() < listValidCursorPositions.size()) {
+                while(filteredInputBuilder.length() < listValidCursorPositions.size()) {
+                    filteredInputBuilder.append(deleteChar);
+                }
+            } else if(filteredInputBuilder.length() > listValidCursorPositions.size()) {
+                filteredInputBuilder.replace(listValidCursorPositions.size(), filteredInputBuilder.length(), "");
+            }
 
+            StringBuilder buffer = new StringBuilder(filteredInputBuilder);
             Editable text = this.getText();
             if (text != null) {
                 for (int i = 0; i < mask.length(); i++) {
