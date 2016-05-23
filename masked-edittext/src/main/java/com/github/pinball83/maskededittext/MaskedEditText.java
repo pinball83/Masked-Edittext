@@ -326,11 +326,16 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
 
             if (!(source instanceof SpannableStringBuilder)) {
                 StringBuilder filteredStringBuilder = new StringBuilder();
-                final boolean charAllowed = isCharAllowed(dstart);
+                // defaultMaskedSymbols == array that tells us which symbols should be replaced by default
+                // and which symbols are part of mask
+                boolean defaultMaskedSymbols[] = new boolean[dend - dstart + 1];
+                for (int i = 0; i <= dend - dstart; i++) {
+                    defaultMaskedSymbols[i] = isCharAllowed(dstart + i);
+                }
                 for (int i = start; i < end; i++) {
                     char currentChar = source.charAt(i);
 
-                    if (charAllowed) {
+                    if (defaultMaskedSymbols[0]) {
                         isUserInput = false;
                         MaskedEditText.this.getText().replace(dstart, dstart + 1, "");
                         isUserInput = true;
@@ -357,13 +362,14 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
                 }
                 if (isUserInput && TextUtils.isEmpty(source)) {//deletion detection
                     if (dend != 0) {
-                        if (charAllowed) {
-                            filteredStringBuilder.append(deleteChar);
-                            skipSymbolAfterDeletion(dstart);
-                        } else {
-                            filteredStringBuilder.append(mask.charAt(dstart));
-                            skipSymbolAfterDeletion(dstart);
+                        for (int i = 0; i < dend - dstart; i++) {
+                            if (defaultMaskedSymbols[i]) {
+                                filteredStringBuilder.append(deleteChar);
+                            } else {
+                                filteredStringBuilder.append(mask.charAt(dstart + i));
+                            }
                         }
+                        skipSymbolAfterDeletion(dstart);
                     }
 
                 }
