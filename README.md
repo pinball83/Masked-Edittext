@@ -93,3 +93,21 @@ Getting text
 
     maskedEditText.getUnmaskedText() //return unmasked text
     maskedEditText.getText()         //return mask and text
+
+####Validation
+To use [Saripaar](https://github.com/ragunathjawahar/android-saripaar) validation, you first need to import the validation annotation.
+
+```java
+Validator.registerAnnotation(MaskedRequire.class);
+```
+
+Then you just need to use the MaskedRequire annotation on your object. The only required attribute is value. The others are optional.
+```java
+@MaskedRequire(
+    value = "8 (***) *** **-**",
+    complete = true,
+    notMaskedSymbol = "\\*",
+    replacementChar = ""
+)
+MaskedEditText maskedEditText;
+```
