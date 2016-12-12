@@ -6,20 +6,43 @@ import android.text.InputType;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 import com.github.pinball83.maskededittext.MaskedEditText;
+import com.github.pinball83.maskededittext.saripaar.MaskedRequire;
+import com.mobsandgeeks.saripaar.ValidationError;
+import com.mobsandgeeks.saripaar.Validator;
+
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
+
+    @MaskedRequire(value = "8 (***) *** **-**", complete = true, notMaskedSymbol = "\\*", replacementChar = "")
+    MaskedEditText maskedEditText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        final MaskedEditText maskedEditText = (MaskedEditText) this.findViewById(R.id.masked_edit_text);
+        Validator.registerAnnotation(MaskedRequire.class);
+        final Validator validator = new Validator(this);
+        validator.setValidationListener(new Validator.ValidationListener() {
+            @Override
+            public void onValidationSucceeded() {
+                Toast.makeText(MainActivity.this, "Validation success", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onValidationFailed(List<ValidationError> errors) {
+                for (ValidationError error : errors) {
+                    Toast.makeText(MainActivity.this, error.getCollatedErrorMessage(MainActivity.this), Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+        maskedEditText = (MaskedEditText) this.findViewById(R.id.masked_edit_text);
         maskedEditText.setMaskIconCallback(new MaskedEditText.MaskIconCallback() {
             @Override
             public void onIconPushed() {
-                System.out.println("clear text");
-                maskedEditText.setMaskedText("          ");
+                validator.validate();
             }
         });
 
@@ -27,12 +50,17 @@ public class MainActivity extends AppCompatActivity {
                 "8 (***) *** **-**",
                 "*",
                 getResources().getDrawable(R.drawable.ic_account_circle));
+
         maskedEditText1.setInputType(InputType.TYPE_CLASS_NUMBER);
         maskedEditText1.setMaskIconCallback(new MaskedEditText.MaskIconCallback() {
             @Override
             public void onIconPushed() {
                 System.out.println("Icon pushed");
-                Toast.makeText(MainActivity.this, "Unmasked text " + maskedEditText1.getUnmaskedText(), Toast.LENGTH_SHORT).show();
+                if (maskedEditText1.isEmpty()) {
+                    Toast.makeText(MainActivity.this, "It is empty", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(MainActivity.this, "Unmasked text " + maskedEditText1.getUnmaskedText(), Toast.LENGTH_SHORT).show();
+                }
             }
         });
 

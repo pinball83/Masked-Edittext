@@ -36,7 +36,7 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
     private Integer firstAllowedPosition = 0;
     private Integer lastAllowedPosition = 0;
     private Drawable maskIcon;
-    private OnFocusChangeListener onFocusChangeListener;
+    private View.OnFocusChangeListener onFocusChangeListener;
     private MaskIconCallback maskIconCallback;
     private String filteredMask;
     private MaskedInputFilter maskedInputFilter;
@@ -309,11 +309,13 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
         this.maskIconCallback = maskIconCallback;
     }
 
+    public boolean isEmpty() {
+        return getUnmaskedText().isEmpty();
+    }
 
     public interface MaskIconCallback {
         void onIconPushed();
     }
-
 
     private class MaskedInputFilter implements InputFilter {
         private boolean isUserInput = true;

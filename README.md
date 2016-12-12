@@ -1,5 +1,5 @@
 # Masked-Edittext
-[ ![Download](https://api.bintray.com/packages/pinball83/maven/masked-edittext/images/download.svg) ](https://bintray.com/pinball83/maven/masked-edittext/_latestVersion) [![Android Arsenal](https://img.shields.io/badge/Android%20Arsenal-Masked--Edittext-green.svg?style=true)](https://android-arsenal.com/details/1/3033) [![Android Gems](http://www.android-gems.com/badge/pinball83/Masked-Edittext.svg?branch=master)](http://www.android-gems.com/lib/pinball83/Masked-Edittext)
+[ ![Download](https://api.bintray.com/packages/faogustavo/maven/MaskedEdittext/images/download.svg) ](https://bintray.com/faogustavo/maven/MaskedEdittext/_latestVersion) [![Android Arsenal](https://img.shields.io/badge/Android%20Arsenal-Masked--Edittext-green.svg?style=true)](https://android-arsenal.com/details/1/3033) [![Android Gems](http://www.android-gems.com/badge/pinball83/Masked-Edittext.svg?branch=master)](http://www.android-gems.com/lib/pinball83/Masked-Edittext)
  
  Masked-Edittext android library EditText widget wrapper add masking and formatting input text functionality.
  
@@ -14,14 +14,17 @@
 ##Maven
 
     <dependency>
-      <groupId>com.github.pinball83</groupId>
+      <groupId>com.gustavofao</groupId>
       <artifactId>masked-edittext</artifactId>
-      <version>1.0.3</version>
-      <type>aar</type>
+      <version>{version}</version>
+      <type>pom</type>
     </dependency>
+
 ##Gradle
 
-    compile 'com.github.pinball83:masked-edittext:1.0.3'
+    compile 'com.gustavofao:masked-edittext:{version}'
+
+**The {version} can be get from the badge**
     
 #Usage
 ###Quick start
@@ -93,3 +96,21 @@ Getting text
 
     maskedEditText.getUnmaskedText() //return unmasked text
     maskedEditText.getText()         //return mask and text
+
+####Validation
+To use [Saripaar](https://github.com/ragunathjawahar/android-saripaar) validation, you first need to import the validation annotation.
+
+```java
+Validator.registerAnnotation(MaskedRequire.class);
+```
+
+Then you just need to use the MaskedRequire annotation on your object. The only required attribute is value. The others are optional.
+```java
+@MaskedRequire(
+    value = "8 (***) *** **-**",
+    complete = true,
+    notMaskedSymbol = "\\*",
+    replacementChar = ""
+)
+MaskedEditText maskedEditText;
+```
