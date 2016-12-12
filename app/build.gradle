@@ -1,5 +1,11 @@
 apply plugin: 'com.android.application'
 
+ext {
+    PUBLISH_GROUP_ID = 'com.gustavofao'
+    PUBLISH_ARTIFACT_ID = 'masked-edittext'
+    PUBLISH_VERSION = '1.0'
+}
+
 android {
     compileSdkVersion 23
     buildToolsVersion "23.0.2"
@@ -24,3 +30,7 @@ dependencies {
     compile 'com.android.support:appcompat-v7:23.1.1'
     testCompile 'junit:junit:4.12'
 }
+
+//  ./gradlew clean build generateRelease
+//  gradlew.bat clean build generateRelease
+apply from: 'https://raw.githubusercontent.com/blundell/release-android-library/master/android-release-aar.gradle'
