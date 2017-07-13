@@ -11,7 +11,7 @@
  
 # Install
 
-##Maven
+## Maven
 
     <dependency>
       <groupId>com.github.pinball83</groupId>
@@ -19,12 +19,12 @@
       <version>1.0.3</version>
       <type>aar</type>
     </dependency>
-##Gradle
+## Gradle
 
     compile 'com.github.pinball83:masked-edittext:1.0.3'
     
-#Usage
-###Quick start
+# Usage
+### Quick start
  You can choose using this widget thought declaring it in layout resource xml 
      
     <com.github.pinball83.maskededittext.MaskedEditText
@@ -52,10 +52,10 @@ or programmatically create in source file
                         }
                     });
   
-###Attributes                        
+### Attributes                        
 MaskedEditText have following attributes 
 
-####XML
+#### XML
     ...
     app:mask = "8 (***) *** **-**"                     //mask
     app:notMaskedSymbol = "*"                          //symbol for mapping allowed placeholders
@@ -66,7 +66,7 @@ MaskedEditText have following attributes
     app:maskIconColor = "@color/colorPrimary"          //icon tint color
     ...
 
-####Java
+#### Java
 Simple instance 
 
     MaskedEditText editText = new MaskedEditText(context, "8 (***) *** **-**", "*"); //set mask to "8 (***) *** **-**" and not masked symbol to "*"
