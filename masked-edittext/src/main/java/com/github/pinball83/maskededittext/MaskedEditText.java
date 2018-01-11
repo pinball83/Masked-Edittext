@@ -5,6 +5,7 @@ import android.content.res.TypedArray;
 import android.graphics.drawable.Drawable;
 import android.support.v4.graphics.drawable.DrawableCompat;
 import android.support.v7.widget.AppCompatEditText;
+import android.support.v7.widget.AppCompatDrawableManager;
 import android.text.*;
 import android.text.method.DigitsKeyListener;
 import android.util.AttributeSet;
@@ -99,12 +100,18 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
             notMaskedSymbol = a.getString(R.styleable.MaskedEditText_notMaskedSymbol);
             mask = a.getString(R.styleable.MaskedEditText_mask);
 
-            Drawable drawableIcon = a.getDrawable(R.styleable.MaskedEditText_maskIcon);
-            if (drawableIcon != null) {
-                final Drawable wrappedDrawable = DrawableCompat.wrap(drawableIcon);
-                int drawableIconColor = a.getColor(R.styleable.MaskedEditText_maskIconColor, getCurrentHintTextColor());
-                DrawableCompat.setTint(wrappedDrawable, drawableIconColor);
-                maskIcon = wrappedDrawable;
+            int maskedIconRes = a.getResourceId(R.styleable.MaskedEditText_maskIcon,0);
+
+            if(maskedIconRes > 0){
+                AppCompatDrawableManager dm = AppCompatDrawableManager.get();
+
+                Drawable drawableIcon = dm.getDrawable(context,maskedIconRes);
+                if (drawableIcon != null) {
+                    final Drawable wrappedDrawable = DrawableCompat.wrap(drawableIcon);
+                    int drawableIconColor = a.getColor(R.styleable.MaskedEditText_maskIconColor, getCurrentHintTextColor());
+                    DrawableCompat.setTint(wrappedDrawable, drawableIconColor);
+                    maskIcon = wrappedDrawable;
+                }
             }
         }
 
