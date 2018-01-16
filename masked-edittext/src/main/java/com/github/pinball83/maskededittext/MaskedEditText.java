@@ -330,7 +330,7 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
      * Use setIconCallback method
      */
     @Deprecated
-    public void setMaskIconCallback(MaskIconCallback maskIconCallback) {
+    public void setMaskIconCallback(@Nullable MaskIconCallback maskIconCallback) {
         this.maskIconCallback = maskIconCallback;
     }
 
@@ -342,7 +342,7 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
         void onIconPushed();
     }
 
-    public void setIconCallback(IconCallback iconCallback) {
+    public void setIconCallback(@Nullable IconCallback iconCallback) {
         this.iconCallback = iconCallback;
     }
 

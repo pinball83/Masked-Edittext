@@ -18,12 +18,9 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         final MaskedEditText maskedEditText = this.findViewById(R.id.masked_edit_text);
-        maskedEditText.setIconCallback(new MaskedEditText.IconCallback() {
-            @Override
-            public void onIconPushed(String unmaskedText) {
-                Log.d(TAG, "onIconPushed: " + unmaskedText);
-                maskedEditText.setMaskedText("          ");
-            }
+        maskedEditText.setIconCallback(unmaskedText -> {
+            Log.d(TAG, "onIconPushed: " + unmaskedText);
+            maskedEditText.setMaskedText("          ");
         });
 
         final MaskedEditText maskedEditText1 = new MaskedEditText.Builder(this)
@@ -31,12 +28,9 @@ public class MainActivity extends AppCompatActivity {
                 .notMaskedSymbol("*")
                 .icon(R.drawable.ic_account_circle)
                 .format("[1][2][3] [4][5][6]-[7][8]-[10][9]")//we change format output text, swap last two digit
-                .iconCallback(new MaskedEditText.IconCallback() {
-                    @Override
-                    public void onIconPushed(String unmaskedText) {
-                        Log.d(TAG, "onIconPushed: ");
-                        Toast.makeText(MainActivity.this, String.format("Unmasked formatted text %s", unmaskedText), Toast.LENGTH_SHORT).show();
-                    }
+                .iconCallback(unmaskedText -> {
+                    Log.d(TAG, "onIconPushed: ");
+                    Toast.makeText(MainActivity.this, String.format("Unmasked formatted text %s", unmaskedText), Toast.LENGTH_SHORT).show();
                 })
                 .build();
         maskedEditText1.setInputType(InputType.TYPE_CLASS_NUMBER);
