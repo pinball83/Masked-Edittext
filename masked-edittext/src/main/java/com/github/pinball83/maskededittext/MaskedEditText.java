@@ -1,17 +1,27 @@
 package com.github.pinball83.maskededittext;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.drawable.Drawable;
+import android.support.annotation.DrawableRes;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.graphics.drawable.DrawableCompat;
-import android.support.v7.widget.AppCompatEditText;
 import android.support.v7.widget.AppCompatDrawableManager;
-import android.text.*;
+import android.support.v7.widget.AppCompatEditText;
+import android.text.Editable;
+import android.text.InputFilter;
+import android.text.InputType;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.TextUtils;
 import android.text.method.DigitsKeyListener;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
+
 import com.thrd.maskededittext.R;
 
 import java.util.ArrayList;
@@ -19,10 +29,7 @@ import java.util.ListIterator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * @author safronov
- * @version 02/12/15.
- */
+
 public class MaskedEditText extends AppCompatEditText implements View.OnTouchListener, View.OnFocusChangeListener {
 
     private Context context;
@@ -31,35 +38,30 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
 
     private String deleteChar;
     private String replacementChar;
-    private String format;
+    @Nullable private String format;
     private boolean required;
+    @Nullable private MaskIconCallback maskIconCallback;
+    @Nullable private IconCallback iconCallback;
+    private Drawable maskIcon;
+
     private ArrayList<Integer> listValidCursorPositions = new ArrayList<>();
     private Integer firstAllowedPosition = 0;
     private Integer lastAllowedPosition = 0;
-    private Drawable maskIcon;
     private OnFocusChangeListener onFocusChangeListener;
-    private MaskIconCallback maskIconCallback;
     private String filteredMask;
     private MaskedInputFilter maskedInputFilter;
 
     public MaskedEditText(Context context) {
         super(context);
-        init(context, "", "", null, null, null);
+        init(context, "", "", null, null, null, null, null);
     }
 
-    public MaskedEditText(Context context, String mask, String notMaskedSymbol) {
+    private MaskedEditText(Context context, String mask, String notMaskedSymbol, String format, @DrawableRes int maskIcon, IconCallback iconCallback) {
         super(context);
-        init(context, mask, notMaskedSymbol, null, null, null);
-    }
-
-    public MaskedEditText(Context context, String mask, String notMaskedSymbol, Drawable maskIcon) {
-        super(context);
-        init(context, mask, notMaskedSymbol, null, maskIcon, null);
-    }
-
-    public MaskedEditText(Context context, String mask, String notMaskedSymbol, Drawable maskIcon, MaskIconCallback maskIconCallback) {
-        super(context);
-        init(context, mask, notMaskedSymbol, null, maskIcon, maskIconCallback);
+        Drawable drawable = null;
+        if (maskIcon != -1)
+            drawable = this.getResources().getDrawable(maskIcon);
+        init(context, mask, notMaskedSymbol, null, format, drawable, null, iconCallback);
     }
 
     public MaskedEditText(Context context, AttributeSet attrs) {
@@ -73,15 +75,17 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
     }
 
     private void init(Context context, AttributeSet attrs) {
-        init(context, "", "", attrs, null, null);
+        init(context, "", "", attrs, null, null, null, null);
     }
 
-    private void init(Context context, String mask, String notMaskedSymbol, AttributeSet attrs, Drawable maskIcon, MaskIconCallback maskIconCallback) {
+    private void init(Context context, String mask, String notMaskedSymbol, AttributeSet attrs, String format, Drawable maskIcon, MaskIconCallback maskIconCallback, IconCallback iconCallback) {
         this.context = context;
         this.mask = mask;
         this.notMaskedSymbol = notMaskedSymbol;
         this.maskIcon = maskIcon;
         this.maskIconCallback = maskIconCallback;
+        this.iconCallback = iconCallback;
+        this.format = format;
 
         initByAttributes(context, attrs);
         initMaskIcon();
@@ -90,9 +94,9 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
         this.setSingleLine(true);
         this.setFocusable(true);
         this.setFocusableInTouchMode(true);
-
     }
 
+    @SuppressLint("RestrictedApi")
     private void initByAttributes(Context context, AttributeSet attrs) {
         TypedArray a = context.getTheme().obtainStyledAttributes(attrs, R.styleable.MaskedEditText, 0, 0);
 
@@ -100,12 +104,11 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
             notMaskedSymbol = a.getString(R.styleable.MaskedEditText_notMaskedSymbol);
             mask = a.getString(R.styleable.MaskedEditText_mask);
 
-            int maskedIconRes = a.getResourceId(R.styleable.MaskedEditText_maskIcon,0);
+            int maskedIconRes = a.getResourceId(R.styleable.MaskedEditText_maskIcon, 0);
 
-            if(maskedIconRes > 0){
+            if (maskedIconRes > 0) {
                 AppCompatDrawableManager dm = AppCompatDrawableManager.get();
-
-                Drawable drawableIcon = dm.getDrawable(context,maskedIconRes);
+                Drawable drawableIcon = dm.getDrawable(context, maskedIconRes);
                 if (drawableIcon != null) {
                     final Drawable wrappedDrawable = DrawableCompat.wrap(drawableIcon);
                     int drawableIconColor = a.getColor(R.styleable.MaskedEditText_maskIconColor, getCurrentHintTextColor());
@@ -122,8 +125,9 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
             replacementChar = a.getString(R.styleable.MaskedEditText_replacementChar);
             if (replacementChar == null) replacementChar = " ";
 
-            format = a.getString(R.styleable.MaskedEditText_format);
-            if (format == null) format = "";
+            String format = a.getString(R.styleable.MaskedEditText_format);
+            if (format == null && this.format == null) this.format = "";
+            else if (!TextUtils.isEmpty(format) && this.format == null) this.format = format;
 
             initListValidCursorPositions(mask, notMaskedSymbol);
 
@@ -132,10 +136,7 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
 
             maskedInputFilter = new MaskedInputFilter();
             this.setFilters(new InputFilter[]{maskedInputFilter});
-        } else {
-            System.err.println("Mask not correct initialised ");
         }
-
 
         int inputType = a.getInteger(R.styleable.MaskedEditText_android_inputType, -1);
         this.setInputType(inputType);
@@ -217,11 +218,11 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
     public void setMaskedText(String input) {
         if (input != null) {
             StringBuilder filteredInputBuilder = new StringBuilder(input);
-            if(filteredInputBuilder.length() < listValidCursorPositions.size()) {
-                while(filteredInputBuilder.length() < listValidCursorPositions.size()) {
+            if (filteredInputBuilder.length() < listValidCursorPositions.size()) {
+                while (filteredInputBuilder.length() < listValidCursorPositions.size()) {
                     filteredInputBuilder.append(deleteChar);
                 }
-            } else if(filteredInputBuilder.length() > listValidCursorPositions.size()) {
+            } else if (filteredInputBuilder.length() > listValidCursorPositions.size()) {
                 filteredInputBuilder.replace(listValidCursorPositions.size(), filteredInputBuilder.length(), "");
             }
 
@@ -241,9 +242,9 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
         }
     }
 
+    @NonNull
     private String formatText(String input, String pattern) {
-        String regularExpression = "(\\[[\\d]+\\])";
-        Pattern p = Pattern.compile(regularExpression);
+        Pattern p = Pattern.compile("(\\[[\\d]+])");
         Matcher m = p.matcher(pattern);
         StringBuffer sb = new StringBuffer();
         while (m.find()) {
@@ -252,12 +253,17 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
         return sb.toString();
     }
 
+    @NonNull
     private String getSymbol(String input, String group) {
         int i = Integer.valueOf(group.replace("[", "").replace("]", ""));
         return String.valueOf(input.toCharArray()[i - 1]);
     }
 
-    public void setFormat(String format) {
+    /**
+     * Use builder
+     */
+    @Deprecated
+    public void setFormat(@Nullable String format) {
         this.format = format;
     }
 
@@ -269,6 +275,10 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
         this.required = required;
     }
 
+    /**
+     * Use builder
+     */
+    @Deprecated
     public void setMask(String mask) {
         this.mask = mask;
     }
@@ -298,7 +308,10 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
         final int x = (int) event.getX();
         if (maskIcon != null && maskIcon.isVisible() && x > getWidth() - getPaddingRight() - maskIcon.getIntrinsicWidth()) {
             if (event.getAction() == MotionEvent.ACTION_UP) {
-                maskIconCallback.onIconPushed();
+                if (maskIconCallback != null)
+                    maskIconCallback.onIconPushed();
+                if (iconCallback != null)
+                    iconCallback.onIconPushed(getUnmaskedText());
             }
             return true;
         }
@@ -306,21 +319,36 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
             this.setSelection(firstAllowedPosition);
             this.requestFocus();
             InputMethodManager imm = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm == null) return false;
             imm.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT);
             return true;
         }
         return false;
     }
 
+    /**
+     * Use setIconCallback method
+     */
+    @Deprecated
     public void setMaskIconCallback(MaskIconCallback maskIconCallback) {
         this.maskIconCallback = maskIconCallback;
     }
 
-
+    /**
+     * Use IconCallback interface
+     */
+    @Deprecated
     public interface MaskIconCallback {
         void onIconPushed();
     }
 
+    public void setIconCallback(IconCallback iconCallback) {
+        this.iconCallback = iconCallback;
+    }
+
+    public interface IconCallback {
+        void onIconPushed(String unmaskedText);
+    }
 
     private class MaskedInputFilter implements InputFilter {
         private boolean isUserInput = true;
@@ -446,14 +474,53 @@ public class MaskedEditText extends AppCompatEditText implements View.OnTouchLis
         }
 
         private boolean isCharAllowed(int index) {
-            final boolean result = index < mask.length() && mask.charAt(index) == notMaskedSymbol.toCharArray()[0];
-            return result;
+            return index < mask.length() && mask.charAt(index) == notMaskedSymbol.toCharArray()[0];
         }
 
-        public void setTextSetup(boolean textSetup) {
+        private void setTextSetup(boolean textSetup) {
             this.textSetup = textSetup;
         }
     }
 
+    public static class Builder {
+        private Context context;
+        private String mask = null;
+        private String notMaskedSymbol = null;
+        private int icon = -1;
+        private IconCallback iconCallback = null;
+        private String format = null;
 
+        public Builder(Context context) {
+            this.context = context;
+        }
+
+        public Builder mask(String mask) {
+            this.mask = mask;
+            return this;
+        }
+
+        public Builder notMaskedSymbol(String notMaskedSymbol) {
+            this.notMaskedSymbol = notMaskedSymbol;
+            return this;
+        }
+
+        public Builder icon(@DrawableRes int maskIcon) {
+            this.icon = maskIcon;
+            return this;
+        }
+
+        public Builder iconCallback(IconCallback maskIconCallback) {
+            this.iconCallback = maskIconCallback;
+            return this;
+        }
+
+        public Builder format(String format) {
+            this.format = format;
+            return this;
+        }
+
+        public MaskedEditText build() {
+            return new MaskedEditText(context, mask, notMaskedSymbol, format, icon, iconCallback);
+        }
+    }
 }

@@ -25,8 +25,8 @@
     
 # Usage
 ### Quick start
- You can choose using this widget thought declaring it in layout resource xml 
-     
+ You can choose using this widget thought declaring it in layout resource xml
+
     <com.github.pinball83.maskededittext.MaskedEditText
                     android:id="@+id/masked_edit_text"
                     android:layout_width="match_parent"
@@ -39,7 +39,7 @@
                     />
 
 or programmatically create in source file
- 
+
     MaskedEditText maskedEditText = new MaskedEditText(this,
                     "8 (***) *** **-**",
                     "*",
@@ -51,9 +51,9 @@ or programmatically create in source file
                             //Invoke here contact list or just clear input
                         }
                     });
-  
-### Attributes                        
-MaskedEditText have following attributes 
+
+### Attributes
+MaskedEditText have following attributes
 
 #### XML
     ...
@@ -67,7 +67,7 @@ MaskedEditText have following attributes
     ...
 
 #### Java
-Simple instance 
+Simple instance
 
     MaskedEditText editText = new MaskedEditText(context, "8 (***) *** **-**", "*"); //set mask to "8 (***) *** **-**" and not masked symbol to "*"
 
@@ -75,7 +75,7 @@ text setup and formatting
 
     editText.setMaskedText("5551235567");                     //set text into widget it will be look like 8 (555) 123 55-67
     editText.setFormat("[1][2][3] [4][5][6]-[7][8]-[10][9]"); //set format of returned data input into MaskedEditText e.g editText.getUnmaskedText() return 8 (555) 123 55-76
-     
+
 Widget instance with mask, icon button and callback
 
     MaskedEditText maskedEditText = new MaskedEditText(this,
