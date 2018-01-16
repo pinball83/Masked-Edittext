@@ -21,7 +21,7 @@
     </dependency>
 ## Gradle
 
-    compile 'com.github.pinball83:masked-edittext:1.0.3'
+    compile 'com.github.pinball83:masked-edittext:1.0.4'
     
 # Usage
 ### Quick start
@@ -40,17 +40,12 @@
 
 or programmatically create in source file
 
-    MaskedEditText maskedEditText = new MaskedEditText(this,
-                    "8 (***) *** **-**",
-                    "*",
-                    getResources().getDrawable(R.drawable.ic_account_circle),
-                    new MaskedEditText.MaskIconCallback() {
-                        @Override
-                        public void onIconPushed() {
-                            System.out.println("Icon pushed");
-                            //Invoke here contact list or just clear input
-                        }
-                    });
+    MaskedEditText maskedEditText = new MaskedEditText.Builder(context)
+                .mask("8 (***) *** **-**")
+                .notMaskedSymbol("*")
+                .icon(R.drawable.ic_account_circle)
+                .iconCallback(unmaskedText -> { //Icon click callback handler })
+                .build();
 
 ### Attributes
 MaskedEditText have following attributes
@@ -69,25 +64,30 @@ MaskedEditText have following attributes
 #### Java
 Simple instance
 
-    MaskedEditText editText = new MaskedEditText(context, "8 (***) *** **-**", "*"); //set mask to "8 (***) *** **-**" and not masked symbol to "*"
+    MaskedEditText editText = new MaskedEditText.Builder(context)
+                .mask("8 (***) *** **-**")
+                .notMaskedSymbol("*")
+                .build();; //set mask to "8 (***) *** **-**" and not masked symbol to "*"
 
-text setup and formatting
+Text setup and formatting
 
+    MaskedEditText editText = new MaskedEditText..Builder(context)
+                .mask("8 (***) *** **-**")
+                .notMaskedSymbol("*")
+                .format("[1][2][3] [4][5][6]-[7][8]-[10][9]")//set format of returned data input into MaskedEditText
+                .build();
     editText.setMaskedText("5551235567");                     //set text into widget it will be look like 8 (555) 123 55-67
-    editText.setFormat("[1][2][3] [4][5][6]-[7][8]-[10][9]"); //set format of returned data input into MaskedEditText e.g editText.getUnmaskedText() return 8 (555) 123 55-76
+
+Invocation method getUnmaskedText() return 8 (555) 123 55-76 we swap to last digit
 
 Widget instance with mask, icon button and callback
 
-    MaskedEditText maskedEditText = new MaskedEditText(this,
-                "8 (***) *** **-**",
-                "*",
-                getResources().getDrawable(R.drawable.ic_account_circle),
-                new MaskedEditText.MaskIconCallback() {
-                    @Override
-                    public void onIconPushed() {
-                        System.out.println("Icon pushed");
-                    }
-                });
+    MaskedEditText editText = new MaskedEditText.Builder(context)
+                .mask("8 (***) *** **-**")
+                .notMaskedSymbol("*")
+                .icon(R.drawable.ic_account_circle)
+                .iconCallback(unmaskedText -> { //Icon click callback handler })
+                .build();
 
 Getting text
 
