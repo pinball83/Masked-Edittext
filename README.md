@@ -3,11 +3,9 @@
  
  Masked-Edittext android library EditText widget wrapper add masking and formatting input text functionality.
  
- ![Image phone number formatted input]
- (http://g.recordit.co/ROo3bzrX7k.gif)
+ ![Image phone number formatted input](http://g.recordit.co/ROo3bzrX7k.gif)
  
- ![Image card number formatted input]
-  (http://g.recordit.co/B8IuMTrsYi.gif)
+ ![Image card number formatted input](http://g.recordit.co/B8IuMTrsYi.gif)
  
 # Install
 
@@ -16,7 +14,7 @@
     <dependency>
       <groupId>com.github.pinball83</groupId>
       <artifactId>masked-edittext</artifactId>
-      <version>1.0.3</version>
+      <version>1.0.4</version>
       <type>aar</type>
     </dependency>
 ## Gradle
