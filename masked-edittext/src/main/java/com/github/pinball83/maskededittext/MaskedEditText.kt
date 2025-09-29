@@ -1,26 +1,17 @@
 package com.github.pinball83.maskededittext
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.drawable.Drawable
-import android.text.Editable
 import android.text.InputFilter
-import android.text.InputType
-import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.TextUtils
-import android.text.method.DigitsKeyListener
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
-import android.view.inputmethod.InputMethodManager
 import androidx.annotation.DrawableRes
 import androidx.appcompat.widget.AppCompatEditText
 import androidx.core.graphics.drawable.DrawableCompat
 import com.thrd.maskededittext.R
-import java.util.*
-import java.util.regex.Pattern
-import kotlin.collections.ArrayList
 
 /**
  * Modernized Kotlin version of MaskedEditText with state machine support

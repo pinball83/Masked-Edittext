@@ -146,16 +146,12 @@ class MaskedTextFieldState(
         }
         
         fun formatOutput(unmaskedText: String): String {
-            if (format.isNullOrEmpty()) return unmaskedText
-            
-            // Apply custom formatting if specified
-            var result = format
-            unmaskedText.forEachIndexed { index, char ->
-                val placeholder = "[${index + 1}]"
-                result = result.replace(placeholder, char.toString())
+            val currentFormat = format
+            if (currentFormat.isNullOrEmpty()) return unmaskedText
+
+            return unmaskedText.foldIndexed(currentFormat) { index, acc, char ->
+                acc.replace("[${index + 1}]", char.toString())
             }
-            
-            return result
         }
     }
 }

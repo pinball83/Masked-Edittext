@@ -101,7 +101,7 @@ class InputStateMachine(
             return currentState
         }
         
-        val unmaskedText = maskedEditText.unmaskedText
+        val unmaskedText = maskedEditText.getUnmaskedText()
         
         // Check if input is empty
         if (TextUtils.isEmpty(unmaskedText) || unmaskedText.trim().isEmpty()) {
@@ -126,7 +126,7 @@ class InputStateMachine(
             return false
         }
         
-        val unmaskedText = maskedEditText.unmaskedText
+        val unmaskedText = maskedEditText.getUnmaskedText()
         if (TextUtils.isEmpty(unmaskedText)) {
             return false
         }
@@ -141,7 +141,7 @@ class InputStateMachine(
             return true
         }
         
-        val unmaskedText = maskedEditText.unmaskedText
+        val unmaskedText = maskedEditText.getUnmaskedText()
         if (TextUtils.isEmpty(unmaskedText)) {
             return true
         }

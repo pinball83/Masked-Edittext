@@ -8,6 +8,7 @@
         <attr name="format" format="string"/>
         <attr name="maskIcon" format="reference"/>
         <attr name="maskIconColor" format="reference"/>
+        <attr name="required" format="boolean"/>
         <attr name="android:inputType"/>
     </declare-styleable>
 </resources>
