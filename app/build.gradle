@@ -1,13 +1,12 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 27
-    buildToolsVersion '27.0.3'
+    compileSdkVersion 36
 
     defaultConfig {
         applicationId "com.thrd.maskededitbox"
-        minSdkVersion 14
-        targetSdkVersion 27
+        minSdkVersion 21
+        targetSdkVersion 36
         versionCode 1
         versionName "1.0"
     }
@@ -22,10 +21,9 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+    namespace 'com.github.pinball83.app'
 }
 
 dependencies {
-    compile project(':masked-edittext')
-    compile 'com.android.support:appcompat-v7:27.0.2'
-    testCompile 'junit:junit:4.12'
+    implementation project(':masked-edittext')
 }
