@@ -18,16 +18,19 @@
                 android:layout_height="?attr/actionBarSize" />
 
     </com.google.android.material.appbar.AppBarLayout>
-
-    <include layout="@layout/content_main" />
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/fab"
-            android:layout_width="wrap_content"
+    <androidx.core.widget.NestedScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            tools:context=".FirstFragment">
+    <com.github.pinball83.maskededittext.MaskedEditText
+            android:id="@+id/masked_edit_text"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="bottom|end"
-            android:layout_marginEnd="@dimen/fab_margin"
-            android:layout_marginBottom="16dp"
-            app:srcCompat="@android:drawable/ic_dialog_email" />
-
+            android:inputType="number"
+            app:mask="8 (***) *** **-**"
+            app:maskIcon="@android:drawable/ic_menu_close_clear_cancel"
+            app:format="[1][2][3] [4][5][6]-[7][8]-[10][9]"
+            app:maskIconColor="@color/colorPrimary"
+            app:notMaskedSymbol="*" />
+    </androidx.core.widget.NestedScrollView>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
