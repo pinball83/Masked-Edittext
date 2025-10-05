@@ -1,1 +1,3 @@
 include ':app', ':masked-edittext'
+include ':demo_app_compose'
+include ':demo_app'
