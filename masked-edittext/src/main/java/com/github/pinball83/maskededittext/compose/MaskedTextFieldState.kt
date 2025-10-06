@@ -1,25 +1,30 @@
 package com.github.pinball83.maskededittext.compose
 
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import com.github.pinball83.maskededittext.InputEvent
 import com.github.pinball83.maskededittext.InputState
 import com.github.pinball83.maskededittext.InputStateMachine
+import com.github.pinball83.maskededittext.MaskFormatter
 
 /**
- * State holder for MaskedTextField with integrated state machine
+ * State holder for MaskedTextField with shared formatter and state machine support.
  */
 @Stable
-class MaskedTextFieldState(
-    initialValue: String = "",
-    private val maskedOptions: MaskedOptions
+class MaskedTextFieldState internal constructor(
+    initialValue: String,
+    private val maskedOptions: MaskedOptions,
+    private val formatter: MaskFormatter?
 ) {
-    private val maskProcessor = MaskProcessor(
-        maskedOptions.mask, 
-        maskedOptions.notMaskedSymbol, 
-        maskedOptions.format
-    )
-    
+
+    private var rawUnmasked by mutableStateOf(computeRaw(initialValue))
+
     private val stateMachine = InputStateMachine(
         maskedEditText = null,
         stateListener = object : InputStateMachine.InputStateListener {
@@ -28,45 +33,59 @@ class MaskedTextFieldState(
             }
         }
     )
-    
-    var textFieldValue by mutableStateOf(
-        TextFieldValue(maskProcessor.applyMask(initialValue))
-    )
+
+    init {
+        stateMachine.setMaskEvaluator(object : InputStateMachine.MaskEvaluator {
+            override fun currentUnmasked(): String = rawUnmasked
+            override fun isComplete(unmasked: String): Boolean? = formatter?.isComplete(unmasked)
+            override fun isValid(unmasked: String): Boolean? = null
+        })
+        if (initialValue.isNotEmpty()) {
+            stateMachine.processEvent(InputEvent.TEXT_SET)
+        }
+    }
+
+    var textFieldValue by mutableStateOf(createTextFieldValue(rawUnmasked))
         private set
-    
-    var unmaskedValue by mutableStateOf(initialValue)
+
+    var unmaskedValue by mutableStateOf(formatter?.normalize(initialValue) ?: initialValue)
         private set
-    
+
     val currentState: InputState
         get() = stateMachine.getCurrentState()
-    
+
     val isComplete: Boolean
         get() = stateMachine.isComplete()
-    
+
     val isValid: Boolean
         get() = stateMachine.isValid()
-    
+
     val isEmpty: Boolean
         get() = stateMachine.isEmpty()
-    
+
     fun updateValue(newValue: TextFieldValue) {
-        val unmasked = maskProcessor.removeMask(newValue.text)
-        val masked = maskProcessor.applyMask(unmasked)
-        
-        textFieldValue = newValue.copy(text = masked)
-        unmaskedValue = unmasked
-        
-        stateMachine.processEvent(InputEvent.CHARACTER_TYPED)
+        val previousRaw = rawUnmasked
+        val normalized = formatNormalized(newValue.text)
+        rawUnmasked = computeRawFromNormalized(normalized)
+        unmaskedValue = normalized
+
+        val masked = formatter?.mask(normalized) ?: normalized
+        textFieldValue = newValue.copy(text = masked, selection = TextRange(masked.length))
+
+        stateMachine.processEvent(resolveEvent(previousRaw, rawUnmasked))
     }
-    
+
     fun updateValue(newValue: String) {
-        val masked = maskProcessor.applyMask(newValue)
-        textFieldValue = TextFieldValue(masked)
-        unmaskedValue = newValue
-        
+        val normalized = formatNormalized(newValue)
+        rawUnmasked = computeRawFromNormalized(normalized)
+        unmaskedValue = normalized
+
+        val masked = formatter?.mask(normalized) ?: normalized
+        textFieldValue = TextFieldValue(masked, TextRange(masked.length))
+
         stateMachine.processEvent(InputEvent.TEXT_SET)
     }
-    
+
     fun onFocusChanged(focused: Boolean) {
         if (focused) {
             stateMachine.processEvent(InputEvent.FOCUS_GAINED)
@@ -74,100 +93,67 @@ class MaskedTextFieldState(
             stateMachine.processEvent(InputEvent.FOCUS_LOST)
         }
     }
-    
+
     fun clear() {
-        textFieldValue = TextFieldValue(maskProcessor.applyMask(""))
+        rawUnmasked = computeRaw("")
         unmaskedValue = ""
+        val masked = formatter?.mask("") ?: ""
+        textFieldValue = TextFieldValue(masked, TextRange(masked.length))
         stateMachine.processEvent(InputEvent.INPUT_CLEARED)
     }
-    
+
     fun validate() {
         stateMachine.processEvent(InputEvent.VALIDATE)
     }
-    
-    fun getFormattedValue(): String {
-        return if (maskedOptions.format != null) {
-            maskProcessor.formatOutput(unmaskedValue)
-        } else {
-            unmaskedValue
-        }
-    }
-    
-    /**
-     * Helper class to process mask operations
-     */
-    private class MaskProcessor(
-        private val mask: String,
-        private val notMaskedSymbol: Char,
-        private val format: String? = null
-    ) {
-        private val validPositions = mutableListOf<Int>()
-        
-        init {
-            // Find valid cursor positions
-            mask.forEachIndexed { index, char ->
-                if (char == notMaskedSymbol) {
-                    validPositions.add(index)
-                }
-            }
-        }
-        
-        fun applyMask(input: String): String {
-            if (mask.isEmpty()) return input
-            
-            val result = StringBuilder(mask.replace(notMaskedSymbol, ' '))
-            var inputIndex = 0
-            
-            for (position in validPositions) {
-                if (inputIndex < input.length && position < result.length) {
-                    result[position] = input[inputIndex]
-                    inputIndex++
-                }
-            }
-            
-            return result.toString()
-        }
-        
-        fun removeMask(maskedInput: String): String {
-            if (mask.isEmpty()) return maskedInput
-            
-            val result = StringBuilder()
-            
-            for (position in validPositions) {
-                if (position < maskedInput.length) {
-                    val char = maskedInput[position]
-                    if (char != ' ') {
-                        result.append(char)
-                    }
-                }
-            }
-            
-            return result.toString()
-        }
-        
-        fun formatOutput(unmaskedText: String): String {
-            val currentFormat = format
-            if (currentFormat.isNullOrEmpty()) return unmaskedText
 
-            return unmaskedText.foldIndexed(currentFormat) { index, acc, char ->
-                acc.replace("[${index + 1}]", char.toString())
-            }
+    fun getFormattedValue(): String {
+        val formatted = formatter?.formatOutput(rawUnmasked)
+        return formatted ?: unmaskedValue
+    }
+
+    private fun computeRaw(unmasked: String): String {
+        val masked = formatter?.mask(unmasked) ?: unmasked
+        return formatter?.unmask(masked) ?: masked
+    }
+
+    private fun computeRawFromNormalized(normalized: String): String {
+        val masked = formatter?.mask(normalized) ?: normalized
+        return formatter?.unmask(masked) ?: masked
+    }
+
+    private fun formatNormalized(input: String): String {
+        return formatter?.normalize(input) ?: input
+    }
+
+    private fun createTextFieldValue(unmasked: String): TextFieldValue {
+        val masked = formatter?.mask(unmasked) ?: unmasked
+        return TextFieldValue(masked, TextRange(masked.length))
+    }
+
+    private fun resolveEvent(previousRaw: String, newRaw: String): InputEvent {
+        return when {
+            newRaw.length < previousRaw.length -> InputEvent.CHARACTER_DELETED
+            newRaw.length - previousRaw.length > 1 -> InputEvent.TEXT_PASTED
+            else -> InputEvent.CHARACTER_TYPED
         }
     }
 }
 
-/**
- * Creates and remembers a MaskedTextFieldState
- */
 @Composable
 fun rememberMaskedTextFieldState(
     initialValue: String = "",
     maskedOptions: MaskedOptions
 ): MaskedTextFieldState {
-    return remember(maskedOptions) {
+    val formatter = remember(maskedOptions.mask, maskedOptions.notMaskedSymbol, maskedOptions.format) {
+        maskedOptions.mask.takeIf { it.isNotEmpty() }?.let {
+            MaskFormatter(it, maskedOptions.notMaskedSymbol, maskedOptions.format)
+        }
+    }
+    return remember(maskedOptions, formatter, initialValue) {
         MaskedTextFieldState(
             initialValue = initialValue,
-            maskedOptions = maskedOptions
+            maskedOptions = maskedOptions,
+            formatter = formatter
         )
     }
 }
