@@ -9,7 +9,9 @@ import com.example.demo_app.databinding.ActivityMainBinding
 import com.github.pinball83.maskededittext.InputEvent
 import com.github.pinball83.maskededittext.InputState
 import com.github.pinball83.maskededittext.InputStateMachine
+import com.github.pinball83.maskededittext.InputStateMachine.InputStateListener
 import com.github.pinball83.maskededittext.MaskedEditText
+import com.github.pinball83.maskededittext.MaskedEditText.IconCallback
 
 class MainActivity : AppCompatActivity() {
 
@@ -37,9 +39,12 @@ class MainActivity : AppCompatActivity() {
             setMaskIcon(android.R.drawable.ic_menu_send)
             setFormat("[1][2][3][4]-[5][6][7][8]-[9][10][11][12]-[13][14][15][16]")
             setStateChangeListener(logState(binding.cardState))
-            setIconCallback { value ->
-                Toast.makeText(context, getString(R.string.icon_toast, value), Toast.LENGTH_SHORT).show()
-            }
+            setIconCallback(object : IconCallback {
+                override fun onIconClick(unmaskedText: String) {
+                    Toast.makeText(context, getString(R.string.icon_toast, unmaskedText), Toast.LENGTH_SHORT)
+                        .show()
+                }
+            })
         }
     }
 
@@ -49,9 +54,12 @@ class MainActivity : AppCompatActivity() {
             .notMaskedSymbol("*")
             .required(true)
             .icon(android.R.drawable.ic_menu_view)
-            .iconCallback { value ->
-                Toast.makeText(this, getString(R.string.icon_toast, value), Toast.LENGTH_SHORT).show()
-            }
+            .iconCallback(object : IconCallback {
+                override fun onIconClick(unmaskedText: String) {
+                    Toast.makeText(this@MainActivity, getString(R.string.icon_toast, unmaskedText), Toast.LENGTH_SHORT)
+                        .show()
+                }
+            })
             .stateChangeListener(logState(null))
             .build().apply {
                 hint = "AA-1234-XXXXXX"
@@ -61,17 +69,19 @@ class MainActivity : AppCompatActivity() {
         dynamic.setMaskedText("AB1234567890")
     }
 
-    private fun logState(target: TextView?): InputStateMachine.InputStateListener {
-        return InputStateMachine.InputStateListener { _, newState, event ->
-            val formatted = when (newState) {
-                InputState.EMPTY -> getString(R.string.state_template, "empty", event.name)
-                InputState.PARTIAL -> getString(R.string.state_template, "partial", event.name)
-                InputState.COMPLETE -> getString(R.string.state_template, "complete", event.name)
-                InputState.INVALID -> getString(R.string.state_template, "invalid", event.name)
-                InputState.FOCUSED -> getString(R.string.state_template, "focused", event.name)
-                InputState.UNFOCUSED -> getString(R.string.state_template, "unfocused", event.name)
+    private fun logState(target: TextView?): InputStateListener {
+        return object : InputStateListener {
+            override fun onStateChanged(oldState: InputState, newState: InputState, event: InputEvent) {
+                val formatted = when (newState) {
+                    InputState.EMPTY -> getString(R.string.state_template, "empty", event.name)
+                    InputState.PARTIAL -> getString(R.string.state_template, "partial", event.name)
+                    InputState.COMPLETE -> getString(R.string.state_template, "complete", event.name)
+                    InputState.INVALID -> getString(R.string.state_template, "invalid", event.name)
+                    InputState.FOCUSED -> getString(R.string.state_template, "focused", event.name)
+                    InputState.UNFOCUSED -> getString(R.string.state_template, "unfocused", event.name)
+                }
+                target?.text = formatted
             }
-            target?.text = formatted
         }
     }
 }
