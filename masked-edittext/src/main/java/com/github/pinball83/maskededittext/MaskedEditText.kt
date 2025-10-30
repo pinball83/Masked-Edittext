@@ -45,6 +45,17 @@ class MaskedEditText @JvmOverloads constructor(
     private var adjustingSelection: Boolean = false
     private var suppressFilter: Boolean = false
 
+    private fun MaskFormatter.cursorForNormalizedLength(normalizedLength: Int, textLength: Int): Int {
+        return when {
+            normalizedLength <= 0 -> firstValidPosition() ?: 0
+            normalizedLength >= validPositions.size -> {
+                (lastValidPosition()?.plus(1))?.coerceAtMost(textLength) ?: textLength
+            }
+
+            else -> cursorPositionFor(normalizedLength)
+        }.coerceIn(0, textLength)
+    }
+
     init {
         initFromAttributes(attrs, defStyleAttr)
         setupStateMachine()
@@ -117,11 +128,7 @@ class MaskedEditText @JvmOverloads constructor(
                 setText(reApplied)
             }
             val normalizedLength = formatter.normalize(getUnmaskedText()).length
-            val cursorPosition = if (normalizedLength == 0) {
-                formatter.firstValidPosition() ?: 0
-            } else {
-                formatter.cursorPositionFor(normalizedLength)
-            }
+            val cursorPosition = formatter.cursorForNormalizedLength(normalizedLength, reApplied.length)
             setSelection(cursorPosition)
         } else {
             filters = arrayOf()
@@ -273,11 +280,7 @@ class MaskedEditText @JvmOverloads constructor(
             val maskedText = formatter.mask(unmaskedText)
             setText(maskedText)
             val normalizedLength = formatter.normalize(unmaskedText).length
-            val cursorPosition = if (normalizedLength == 0) {
-                formatter.firstValidPosition() ?: 0
-            } else {
-                formatter.cursorPositionFor(normalizedLength)
-            }
+            val cursorPosition = formatter.cursorForNormalizedLength(normalizedLength, maskedText.length)
             setSelection(cursorPosition)
         }
         stateMachine?.processEvent(InputEvent.TEXT_SET)
@@ -370,11 +373,7 @@ class MaskedEditText @JvmOverloads constructor(
             }
 
             val normalizedLength = formatter.normalize(newUnmasked).length
-            val cursorPosition = if (normalizedLength == 0) {
-                formatter.firstValidPosition() ?: 0
-            } else {
-                formatter.cursorPositionFor(normalizedLength)
-            }.coerceIn(0, maskedNew.length)
+            val cursorPosition = formatter.cursorForNormalizedLength(normalizedLength, maskedNew.length)
 
             suppressFilter = true
             try {
@@ -413,11 +412,7 @@ class MaskedEditText @JvmOverloads constructor(
             if (current != remasked) {
                 setText(remasked)
                 val normalizedLength = formatter.normalize(unmasked).length
-                val cursorPosition = if (normalizedLength == 0) {
-                    formatter.firstValidPosition() ?: 0
-                } else {
-                    formatter.cursorPositionFor(normalizedLength)
-                }.coerceIn(0, remasked.length)
+                val cursorPosition = formatter.cursorForNormalizedLength(normalizedLength, remasked.length)
                 if (!adjustingSelection) {
                     adjustingSelection = true
                     setSelection(cursorPosition)
@@ -446,13 +441,27 @@ class MaskedEditText @JvmOverloads constructor(
 
         val formatter = maskFormatter
         if (formatter != null && selStart == selEnd) {
-            val validPosition = formatter.nearestValidPosition(selStart.coerceAtLeast(0))
-            val cappedPosition = validPosition.coerceIn(0, text?.length ?: 0)
-            if (cappedPosition != selStart) {
-                adjustingSelection = true
-                setSelection(cappedPosition)
-                adjustingSelection = false
-                return
+            val textLength = text?.length ?: 0
+            val lastSlot = formatter.lastValidPosition() ?: -1
+            val allowedTrailing = (lastSlot + 1).coerceAtMost(textLength)
+
+            if (selStart <= lastSlot) {
+                val validPosition = formatter.nearestValidPosition(selStart.coerceAtLeast(0))
+                val cappedPosition = validPosition.coerceIn(0, textLength)
+                if (cappedPosition != selStart) {
+                    adjustingSelection = true
+                    setSelection(cappedPosition)
+                    adjustingSelection = false
+                    return
+                }
+            } else if (selStart > allowedTrailing) {
+                val capped = allowedTrailing.coerceIn(0, textLength)
+                if (capped != selStart) {
+                    adjustingSelection = true
+                    setSelection(capped)
+                    adjustingSelection = false
+                    return
+                }
             }
         }
 

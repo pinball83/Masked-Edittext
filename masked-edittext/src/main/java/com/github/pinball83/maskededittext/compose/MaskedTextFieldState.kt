@@ -23,6 +23,16 @@ class MaskedTextFieldState internal constructor(
     private val formatter: MaskFormatter?
 ) {
 
+    private fun MaskFormatter.cursorForLength(normalizedLength: Int, textLength: Int): Int {
+        return when {
+            normalizedLength <= 0 -> firstValidPosition() ?: 0
+            normalizedLength >= validPositions.size -> {
+                (lastValidPosition()?.plus(1))?.coerceAtMost(textLength) ?: textLength
+            }
+            else -> cursorPositionFor(normalizedLength)
+        }.coerceIn(0, textLength)
+    }
+
     private var rawUnmasked by mutableStateOf(computeRaw(initialValue))
 
     private val stateMachine = InputStateMachine(
@@ -70,7 +80,7 @@ class MaskedTextFieldState internal constructor(
         unmaskedValue = normalized
 
         val masked = formatter?.mask(normalized) ?: normalized
-        val cursorPos = formatter?.cursorPositionFor(normalized.length)?.coerceIn(0, masked.length) ?: masked.length
+        val cursorPos = formatter?.cursorForLength(normalized.length, masked.length) ?: masked.length
         textFieldValue = newValue.copy(text = masked, selection = TextRange(cursorPos))
 
         stateMachine.processEvent(resolveEvent(previousRaw, rawUnmasked))
@@ -82,7 +92,7 @@ class MaskedTextFieldState internal constructor(
         unmaskedValue = normalized
 
         val masked = formatter?.mask(normalized) ?: normalized
-        val cursorPos = formatter?.cursorPositionFor(normalized.length)?.coerceIn(0, masked.length) ?: masked.length
+        val cursorPos = formatter?.cursorForLength(normalized.length, masked.length) ?: masked.length
         textFieldValue = TextFieldValue(masked, TextRange(cursorPos))
 
         stateMachine.processEvent(InputEvent.TEXT_SET)
@@ -129,7 +139,7 @@ class MaskedTextFieldState internal constructor(
     private fun createTextFieldValue(unmasked: String): TextFieldValue {
         val masked = formatter?.mask(unmasked) ?: unmasked
         val normalizedLength = formatter?.normalize(unmasked)?.length ?: masked.length
-        val cursorPos = formatter?.cursorPositionFor(normalizedLength)?.coerceIn(0, masked.length) ?: masked.length
+        val cursorPos = formatter?.cursorForLength(normalizedLength, masked.length) ?: masked.length
         return TextFieldValue(masked, TextRange(cursorPos))
     }
 

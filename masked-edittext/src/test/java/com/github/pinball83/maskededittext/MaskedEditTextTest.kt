@@ -83,9 +83,9 @@ class MaskedEditTextTest {
         editText.setMaskedText("1234567")
         assertEquals(13, editText.selectionStart)
 
-        // After completing 10 digits -> last slot
+        // After completing 10 digits -> position just after last slot
         editText.setMaskedText("1234567890")
-        assertEquals(16, editText.selectionStart)
+        assertEquals(17, editText.selectionStart)
     }
 
     @Test
@@ -101,5 +101,21 @@ class MaskedEditTextTest {
         // Simulate deletion: 7 -> 6 digits
         editText.setMaskedText("123456")
         assertEquals(12, editText.selectionStart)
+    }
+
+    @Test
+    fun `can position cursor before last editable slot`() {
+        val editText = MaskedEditText.Builder(context)
+            .mask("8 (***) *** **-**")
+            .notMaskedSymbol("*")
+            .build()
+
+        editText.setMaskedText("1234567890")
+
+        editText.setSelection(15)
+        assertEquals(15, editText.selectionStart)
+
+        editText.setSelection(16)
+        assertEquals(16, editText.selectionStart)
     }
 }
