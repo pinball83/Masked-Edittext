@@ -41,7 +41,39 @@ class MaskedEditTextDeletionTest {
         Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
 
         val actual = editText.text.toString()
-        println("actual after delete='$actual'")
         assertThat(actual, equalTo("8 (921) 234 56-7 "))
+    }
+
+    @Test
+    fun `forward delete across mask advances caret`() {
+        val simple = MaskedEditText(context).apply {
+            setMask("***-***")
+            setNotMaskedSymbol("*")
+            setMaskedText("123456")
+        }
+        val info = EditorInfo()
+        val connection = simple.onCreateInputConnection(info)
+        check(connection != null)
+
+        simple.setSelection(3)
+        connection.deleteSurroundingText(0, 1)
+        Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+
+        assertThat(simple.text.toString(), equalTo("123-56 "))
+        assertThat(simple.selectionStart, equalTo(5))
+    }
+
+    @Test
+    fun `selection before leading literal snaps to first slot`() {
+        val simple = MaskedEditText(context).apply {
+            setMask("+7 (***)")
+            setNotMaskedSymbol("*")
+            setMaskedText("123")
+        }
+
+        simple.setSelection(2) // position before the first placeholder
+        Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+
+        assertThat(simple.selectionStart, equalTo(4))
     }
 }
