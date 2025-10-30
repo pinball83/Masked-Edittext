@@ -44,7 +44,7 @@ class MaskFormatterTest {
         assertEquals(phoneFormatter.firstValidPosition(), phoneFormatter.cursorPositionFor(0))
         val positions = phoneFormatter.validPositions
         for (i in 1..positions.size) {
-            val expected = if (i >= positions.size) positions.last() else positions[i]
+            val expected = if (i >= positions.size) positions.last() + 1 else positions[i]
             assertEquals(expected, phoneFormatter.cursorPositionFor(i))
         }
     }

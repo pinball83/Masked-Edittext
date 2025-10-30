@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.drawable.Drawable
 import android.text.Editable
 import android.text.InputFilter
-import android.text.Selection
 import android.text.Spanned
 import android.text.TextUtils
 import android.util.AttributeSet
@@ -44,6 +43,9 @@ class MaskedEditText @JvmOverloads constructor(
     private var pendingInputEvent: InputEvent? = null
     private var adjustingSelection: Boolean = false
     private var suppressFilter: Boolean = false
+    private var pendingSelection: Int? = null
+    private var pendingText: String? = null
+    private var adjustingText: Boolean = false
 
     private fun MaskFormatter.cursorForNormalizedLength(normalizedLength: Int, textLength: Int): Int {
         return when {
@@ -200,11 +202,17 @@ class MaskedEditText @JvmOverloads constructor(
     override fun onFocusChange(v: View?, hasFocus: Boolean) {
         if (hasFocus) {
             stateMachine?.processEvent(InputEvent.FOCUS_GAINED)
-            if (TextUtils.isEmpty(text)) {
-                val formatter = maskFormatter
-                if (formatter != null) {
-                    setSelection(formatter.firstValidPosition() ?: 0)
+            val formatter = maskFormatter
+            if (formatter != null) {
+                val normalized = formatter.normalize(getUnmaskedText())
+                if (normalized.isEmpty()) {
+                    val position = formatter.firstValidPosition() ?: 0
+                    adjustingSelection = true
+                    setSelection(position)
+                    adjustingSelection = false
                 }
+            } else if (text.isNullOrEmpty()) {
+                setSelection(0)
             }
         } else {
             stateMachine?.processEvent(InputEvent.FOCUS_LOST)
@@ -342,6 +350,7 @@ class MaskedEditText @JvmOverloads constructor(
             val startSlot = slotIndexForPosition(dstart)
             val endSlot = slotIndexForPosition(dend)
 
+            var targetSlotIndex = startSlot
             val newUnmasked = if (src.isEmpty()) {
                 var from = startSlot.coerceAtMost(destUnmasked.length)
                 var to = endSlot.coerceIn(from, destUnmasked.length)
@@ -351,50 +360,42 @@ class MaskedEditText @JvmOverloads constructor(
                         val targetSlot = (startSlot - 1).coerceAtLeast(0)
                         from = targetSlot.coerceAtMost(destUnmasked.length)
                         to = (targetSlot + 1).coerceIn(from, destUnmasked.length)
+                        targetSlotIndex = targetSlot
                     } else if (endSlot < destUnmasked.length) {
                         from = endSlot.coerceAtMost(destUnmasked.length)
                         to = (endSlot + 1).coerceIn(from, destUnmasked.length)
+                        targetSlotIndex = endSlot
+                    } else {
+                        targetSlotIndex = from
                     }
+                } else {
+                    targetSlotIndex = from
                 }
-
                 val trimmed = destUnmasked.removeRange(from, to)
                 formatter.normalize(trimmed)
             } else {
                 val inserted = destUnmasked.substring(0, startSlot) + cleanedSrc + destUnmasked.substring(endSlot)
+                targetSlotIndex = (startSlot + cleanedSrc.length)
                 formatter.normalize(inserted)
             }
 
-            val maskedNew = formatter.mask(newUnmasked)
+            val normalizedUnmasked = newUnmasked
+            val maskedNew = formatter.mask(normalizedUnmasked)
+            val maskedLength = maskedNew.length
+
+            val clampedSlotIndex = targetSlotIndex.coerceIn(0, normalizedUnmasked.length)
+            val targetSelection = formatter.cursorForNormalizedLength(clampedSlotIndex, maskedLength)
 
             // If nothing effectively changes, let the system handle it
             val naiveProposed = destMasked.substring(0, dstart) + src + destMasked.substring(dend)
-            if (maskedNew == naiveProposed) {
-                return null
+            pendingSelection = targetSelection
+            if (maskedNew != naiveProposed) {
+                pendingText = maskedNew
+            } else {
+                pendingText = null
             }
 
-            val normalizedLength = formatter.normalize(newUnmasked).length
-            val cursorPosition = formatter.cursorForNormalizedLength(normalizedLength, maskedNew.length)
-
-            suppressFilter = true
-            try {
-                val editableDest = dest as? Editable
-                if (editableDest != null) {
-                    editableDest.replace(0, editableDest.length, maskedNew)
-                    Selection.setSelection(editableDest, cursorPosition)
-                } else {
-                    setText(maskedNew)
-                    adjustingSelection = true
-                    setSelection(cursorPosition)
-                    adjustingSelection = false
-                }
-            } finally {
-                suppressFilter = false
-            }
-
-            val replacementLength = (dend - dstart).coerceAtLeast(0)
-            val replacementStart = dstart.coerceIn(0, maskedNew.length)
-            val replacementEnd = (replacementStart + replacementLength).coerceAtMost(maskedNew.length)
-            return maskedNew.substring(replacementStart, replacementEnd)
+            return null
         }
     }
 
@@ -402,26 +403,48 @@ class MaskedEditText @JvmOverloads constructor(
     override fun onTextChanged(text: CharSequence?, start: Int, before: Int, count: Int) {
         super.onTextChanged(text, start, before, count)
 
+        if (adjustingText) {
+            adjustingText = false
+            return
+        }
+
         val formatter = maskFormatter
         if (formatter != null && text != null) {
             val current = text.toString()
-            val unmasked = getUnmaskedText(current)
+
+            pendingText?.let { desired ->
+                pendingText = null
+                val target = (pendingSelection ?: desired.length).coerceIn(0, desired.length)
+                pendingSelection = null
+
+                if (current != desired) {
+                    suppressFilter = true
+                    adjustingText = true
+                    setText(desired)
+                    adjustingText = false
+                    suppressFilter = false
+                }
+                setSelection(target)
+                return
+            }
+
+            val unmasked = formatter.unmask(current)
             val remasked = formatter.mask(unmasked)
 
             // Re-apply mask if needed to keep template stable
             if (current != remasked) {
-                setText(remasked)
                 val normalizedLength = formatter.normalize(unmasked).length
-                val cursorPosition = formatter.cursorForNormalizedLength(normalizedLength, remasked.length)
-                if (!adjustingSelection) {
-                    adjustingSelection = true
-                    setSelection(cursorPosition)
-                    adjustingSelection = false
-                }
+                pendingText = remasked
+                pendingSelection = formatter.cursorForNormalizedLength(normalizedLength, remasked.length)
+
+                suppressFilter = true
+                adjustingText = true
+                setText(remasked)
+                adjustingText = false
+                suppressFilter = false
+
                 return
             }
-
-
         }
 
         val event = pendingInputEvent
@@ -430,6 +453,16 @@ class MaskedEditText @JvmOverloads constructor(
             pendingInputEvent = null
         } else if (before != 0 || count != 0) {
             stateMachine?.processEvent(InputEvent.VALIDATE)
+        }
+
+        pendingSelection?.let { desired ->
+            val target = desired.coerceIn(0, text?.length ?: 0)
+            if (!adjustingSelection) {
+                adjustingSelection = true
+                setSelection(target)
+                adjustingSelection = false
+            }
+            pendingSelection = null
         }
     }
 
@@ -442,6 +475,17 @@ class MaskedEditText @JvmOverloads constructor(
         val formatter = maskFormatter
         if (formatter != null && selStart == selEnd) {
             val textLength = text?.length ?: 0
+            val normalized = formatter.normalize(getUnmaskedText())
+            if (normalized.isEmpty()) {
+                val firstSlot = (formatter.firstValidPosition() ?: 0).coerceIn(0, textLength)
+                if (selStart != firstSlot) {
+                    adjustingSelection = true
+                    setSelection(firstSlot)
+                    adjustingSelection = false
+                    return
+                }
+            }
+
             val lastSlot = formatter.lastValidPosition() ?: -1
             val allowedTrailing = (lastSlot + 1).coerceAtMost(textLength)
 

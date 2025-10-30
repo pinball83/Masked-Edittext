@@ -106,7 +106,7 @@ internal class MaskFormatter(
         if (validPositions.isEmpty()) return max(unmaskedLength, 0)
         if (unmaskedLength <= 0) return validPositions.first()
         return if (unmaskedLength >= validPositions.size) {
-            validPositions.last()
+            validPositions.last() + 1
         } else {
             validPositions[unmaskedLength]
         }

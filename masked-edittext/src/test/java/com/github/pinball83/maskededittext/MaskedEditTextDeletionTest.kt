@@ -9,6 +9,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 
 @RunWith(RobolectricTestRunner::class)
 class MaskedEditTextDeletionTest {
@@ -37,6 +38,10 @@ class MaskedEditTextDeletionTest {
         val success = connection.deleteSurroundingText(1, 0)
         assertThat(success, equalTo(true))
 
-        assertThat(editText.text.toString(), equalTo("8 (921) 234 56-7 "))
+        Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+
+        val actual = editText.text.toString()
+        println("actual after delete='$actual'")
+        assertThat(actual, equalTo("8 (921) 234 56-7 "))
     }
 }
