@@ -538,9 +538,11 @@ class MaskedEditText @JvmOverloads constructor(
                     lastEditWasDeletion ->
                         // Prefer previous editable slot when deleting across literals
                         (slots.lastOrNull { it < selStart } ?: (firstSlot ?: 0)).coerceIn(0, textLength)
+
                     lastEditWasTyping ->
                         // Prefer next editable slot when typing across literals
                         (slots.firstOrNull { it > selStart } ?: slots.last()).coerceIn(0, textLength)
+
                     else -> formatter.nearestValidPosition(selStart.coerceAtLeast(0)).coerceIn(0, textLength)
                 }
                 val cappedPosition = validPosition.coerceIn(0, textLength)
@@ -573,40 +575,6 @@ class MaskedEditText @JvmOverloads constructor(
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection? =
         super.onCreateInputConnection(outAttrs)?.let { base ->
             object : InputConnectionWrapper(base, true) {
-                // override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean {
-                //     val formatter = maskFormatter
-                //     if (formatter != null && selectionStart == selectionEnd) {
-                //         val caret = selectionStart
-                //         val slots = formatter.validPositions
-                //         if (beforeLength == 1 && afterLength == 0) {
-                //             // Backspace: move caret left across literals to sit right of previous slot
-                //             if (!slots.contains(caret)) {
-                //                 val prevSlot = slots.lastOrNull { it < caret }
-                //                     ?: formatter.firstValidPosition()
-                //                 val newSel = ((prevSlot ?: 0) + 1).coerceIn(
-                //                     0,
-                //                     this@MaskedEditText.text?.length ?: 0
-                //                 )
-                //                 if (newSel != caret) {
-                //                     this@MaskedEditText.setSelection(newSel)
-                //                 }
-                //             }
-                //         } else if (beforeLength == 0 && afterLength == 1) {
-                //             // Forward delete: move caret right across literals to sit left of next slot
-                //             if (!slots.contains(caret)) {
-                //                 val nextSlot = slots.firstOrNull { it > caret }
-                //                 val newSel = (nextSlot ?: caret).coerceIn(
-                //                     0,
-                //                     this@MaskedEditText.text?.length ?: 0
-                //                 )
-                //                 if (newSel != caret) {
-                //                     this@MaskedEditText.setSelection(newSel)
-                //                 }
-                //             }
-                //         }
-                //     }
-                //     return super.deleteSurroundingText(beforeLength, afterLength)
-                // }
 
                 override fun sendKeyEvent(event: KeyEvent): Boolean {
                     // Some IMEs send explicit DEL key events
