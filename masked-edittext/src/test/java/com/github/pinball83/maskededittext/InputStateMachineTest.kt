@@ -26,7 +26,7 @@ class InputStateMachineTest {
 
     @Test
     fun `typing transitions to partial and complete`() {
-        currentUnmasked = formatter.unmask("                ")
+        currentUnmasked = formatter.unmask(formatter.mask("1"))
         stateMachine.processEvent(InputEvent.CHARACTER_TYPED)
         assertEquals(InputState.PARTIAL, stateMachine.getCurrentState())
 

@@ -19,7 +19,7 @@ class MaskFormatterTest {
 
     @Test
     fun `unmask preserves slot padding`() {
-        val partialMasked = "8 (123) 45  --  "
+        val partialMasked = phoneFormatter.mask("12345")
         val unmasked = phoneFormatter.unmask(partialMasked)
         assertEquals("12345     ", unmasked)
     }
@@ -37,5 +37,39 @@ class MaskFormatterTest {
 
         assertEquals(false, incomplete)
         assertEquals(true, complete)
+    }
+
+    @Test
+    fun `cursorPositionFor moves to next slot after last filled`() {
+        assertEquals(phoneFormatter.firstValidPosition(), phoneFormatter.cursorPositionFor(0))
+        val positions = phoneFormatter.validPositions
+        for (i in 1..positions.size) {
+            val expected = if (i >= positions.size) positions.last() else positions[i]
+            assertEquals(expected, phoneFormatter.cursorPositionFor(i))
+        }
+    }
+
+    @Test
+    fun `nearestValidPosition prefers forward slot on tie`() {
+        val positions = phoneFormatter.validPositions
+        for (idx in 0 until positions.size - 1) {
+            val a = positions[idx]
+            val b = positions[idx + 1]
+            val mid = (a + b) / 2
+            val chosen = phoneFormatter.nearestValidPosition(mid)
+            val distUp = b - mid
+            val distDown = mid - a
+            val expected = if (distUp <= distDown) b else a
+            assertEquals(expected, chosen)
+        }
+    }
+
+    @Test
+    fun `deleting last digit repositions cursor at previous slot`() {
+        val reMasked = phoneFormatter.mask("123456789")
+        assertEquals("8 (123) 456 78-9 ", reMasked)
+        val expectedCursor = phoneFormatter.cursorPositionFor(9)
+        val lastPos = phoneFormatter.validPositions[9]
+        assertEquals(lastPos, expectedCursor)
     }
 }

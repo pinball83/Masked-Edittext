@@ -1,8 +1,6 @@
 package com.github.pinball83.maskededittext
 
-import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.min
 
 /**
  * Shared mask formatter used by both the classic view and Compose implementations.
@@ -84,23 +82,34 @@ internal class MaskFormatter(
 
     fun nearestValidPosition(position: Int): Int {
         if (validPositions.isEmpty()) return position
-        var closest = validPositions.first()
-        var minDistance = Int.MAX_VALUE
+        val first = validPositions.first()
+        val last = validPositions.last()
+        if (position <= first) return first
+        if (position >= last) return last
+
+        var lower = first
+        var upper = last
         for (candidate in validPositions) {
-            val distance = abs(candidate - position)
-            if (distance < minDistance || (distance == minDistance && candidate < closest)) {
-                minDistance = distance
-                closest = candidate
+            if (candidate >= position) {
+                upper = candidate
+                break
             }
+            lower = candidate
         }
-        return closest
+
+        val distDown = position - lower
+        val distUp = upper - position
+        return if (distUp <= distDown) upper else lower
     }
 
     fun cursorPositionFor(unmaskedLength: Int): Int {
         if (validPositions.isEmpty()) return max(unmaskedLength, 0)
         if (unmaskedLength <= 0) return validPositions.first()
-        val index = min(unmaskedLength, validPositions.size - 1)
-        return validPositions[index]
+        return if (unmaskedLength >= validPositions.size) {
+            validPositions.last()
+        } else {
+            validPositions[unmaskedLength]
+        }
     }
 
     private fun CharSequence.getOrNull(index: Int): Char? = if (index in 0 until length) this[index] else null

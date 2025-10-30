@@ -64,4 +64,42 @@ class MaskedEditTextTest {
         assertTrue(editText.isInputEmpty())
         assertEquals("   -   ", editText.text.toString())
     }
+
+    @Test
+    fun `cursor advances to next valid position on setMaskedText`() {
+        val editText = MaskedEditText.Builder(context)
+            .mask("8 (***) *** **-**")
+            .notMaskedSymbol("*")
+            .build()
+
+        // Initially at the first input slot
+        assertEquals(3, editText.selectionStart)
+
+        // After typing 3 digits -> next block's first slot
+        editText.setMaskedText("123")
+        assertEquals(8, editText.selectionStart)
+
+        // After typing 7 digits -> before dash "8 (123) 456 7"
+        editText.setMaskedText("1234567")
+        assertEquals(13, editText.selectionStart)
+
+        // After completing 10 digits -> last slot
+        editText.setMaskedText("1234567890")
+        assertEquals(16, editText.selectionStart)
+    }
+
+    @Test
+    fun `cursor moves back on deletion with setMaskedText`() {
+        val editText = MaskedEditText.Builder(context)
+            .mask("8 (***) *** **-**")
+            .notMaskedSymbol("*")
+            .build()
+
+        editText.setMaskedText("1234567")
+        assertEquals(13, editText.selectionStart)
+
+        // Simulate deletion: 7 -> 6 digits
+        editText.setMaskedText("123456")
+        assertEquals(12, editText.selectionStart)
+    }
 }

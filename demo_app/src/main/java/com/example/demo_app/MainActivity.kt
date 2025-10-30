@@ -8,7 +8,6 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.demo_app.databinding.ActivityMainBinding
 import com.github.pinball83.maskededittext.InputEvent
 import com.github.pinball83.maskededittext.InputState
-import com.github.pinball83.maskededittext.InputStateMachine
 import com.github.pinball83.maskededittext.InputStateMachine.InputStateListener
 import com.github.pinball83.maskededittext.MaskedEditText
 import com.github.pinball83.maskededittext.MaskedEditText.IconCallback
@@ -21,7 +20,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
         setupPhoneSample()
         setupCardSample()
         setupDynamicSample(binding.dynamicHost)

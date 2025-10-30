@@ -70,18 +70,20 @@ class MaskedTextFieldState internal constructor(
         unmaskedValue = normalized
 
         val masked = formatter?.mask(normalized) ?: normalized
-        textFieldValue = newValue.copy(text = masked, selection = TextRange(masked.length))
+        val cursorPos = formatter?.cursorPositionFor(normalized.length)?.coerceIn(0, masked.length) ?: masked.length
+        textFieldValue = newValue.copy(text = masked, selection = TextRange(cursorPos))
 
         stateMachine.processEvent(resolveEvent(previousRaw, rawUnmasked))
     }
 
     fun updateValue(newValue: String) {
         val normalized = formatNormalized(newValue)
-        rawUnmasked = computeRawFromNormalized(normalized)
+        rawUnmasked = normalized
         unmaskedValue = normalized
 
         val masked = formatter?.mask(normalized) ?: normalized
-        textFieldValue = TextFieldValue(masked, TextRange(masked.length))
+        val cursorPos = formatter?.cursorPositionFor(normalized.length)?.coerceIn(0, masked.length) ?: masked.length
+        textFieldValue = TextFieldValue(masked, TextRange(cursorPos))
 
         stateMachine.processEvent(InputEvent.TEXT_SET)
     }
@@ -112,8 +114,7 @@ class MaskedTextFieldState internal constructor(
     }
 
     private fun computeRaw(unmasked: String): String {
-        val masked = formatter?.mask(unmasked) ?: unmasked
-        return formatter?.unmask(masked) ?: masked
+        return formatter?.normalize(unmasked) ?: unmasked
     }
 
     private fun computeRawFromNormalized(normalized: String): String {
@@ -127,7 +128,9 @@ class MaskedTextFieldState internal constructor(
 
     private fun createTextFieldValue(unmasked: String): TextFieldValue {
         val masked = formatter?.mask(unmasked) ?: unmasked
-        return TextFieldValue(masked, TextRange(masked.length))
+        val normalizedLength = formatter?.normalize(unmasked)?.length ?: masked.length
+        val cursorPos = formatter?.cursorPositionFor(normalizedLength)?.coerceIn(0, masked.length) ?: masked.length
+        return TextFieldValue(masked, TextRange(cursorPos))
     }
 
     private fun resolveEvent(previousRaw: String, newRaw: String): InputEvent {

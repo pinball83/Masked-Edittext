@@ -1,6 +1,5 @@
 package com.github.pinball83.maskededittext
 
-import android.text.TextUtils
 
 /**
  * State machine for managing masked input states and transitions
@@ -139,7 +138,7 @@ class InputStateMachine(
             return false
         }
 
-        if (TextUtils.isEmpty(unmaskedText)) {
+        if (unmaskedText.isEmpty()) {
             return false
         }
 
@@ -152,7 +151,7 @@ class InputStateMachine(
             evaluator.isValid(unmaskedText)?.let { return it }
         }
 
-        if (TextUtils.isEmpty(unmaskedText)) {
+        if (unmaskedText.isEmpty()) {
             return true
         }
 
