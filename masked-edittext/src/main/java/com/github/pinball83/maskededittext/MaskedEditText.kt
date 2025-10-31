@@ -47,8 +47,7 @@ class MaskedEditText @JvmOverloads constructor(
     private var pendingSelection: Int? = null
     private var pendingText: String? = null
     private var adjustingText: Boolean = false
-    private var lastEditWasDeletion: Boolean = false
-    private var lastEditWasTyping: Boolean = false
+    private var lastEvent: InputEvent? = null
 
     private fun MaskFormatter.cursorForNormalizedLength(
         normalizedLength: Int,
@@ -99,6 +98,7 @@ class MaskedEditText @JvmOverloads constructor(
                     newState: InputState,
                     event: InputEvent
                 ) {
+                    lastEvent = event
                     stateChangeListener?.onStateChanged(oldState, newState, event)
                 }
             }
@@ -350,8 +350,8 @@ class MaskedEditText @JvmOverloads constructor(
                 src.length > 1 -> InputEvent.TEXT_PASTED
                 else -> InputEvent.CHARACTER_TYPED
             }
-            lastEditWasDeletion = src.isEmpty()
-            lastEditWasTyping = src.isNotEmpty()
+            // Record intent early so selection correction can bias before state updates
+            lastEvent = pendingInputEvent
 
             val slots = formatter.validPositions
 
@@ -477,6 +477,7 @@ class MaskedEditText @JvmOverloads constructor(
 
         val event = pendingInputEvent
         if (event != null) {
+            lastEvent = event
             stateMachine?.processEvent(event)
             pendingInputEvent = null
         } else if (before != 0 || count != 0) {
@@ -503,14 +504,14 @@ class MaskedEditText @JvmOverloads constructor(
         val formatter = maskFormatter
         if (formatter != null && selStart == selEnd) {
             val textLength = text?.length ?: 0
-            val normalized = formatter.normalize(getUnmaskedText())
-            if (normalized.isEmpty()) {
+            val currentState = stateMachine?.getCurrentState()
+            if (currentState == InputState.EMPTY) {
                 val firstSlot = (formatter.firstValidPosition() ?: 0).coerceIn(0, textLength)
                 if (selStart != firstSlot) {
                     adjustingSelection = true
                     setSelection(firstSlot)
                     adjustingSelection = false
-                    lastEditWasDeletion = false
+                    lastEvent = null
                     return
                 }
             }
@@ -522,7 +523,7 @@ class MaskedEditText @JvmOverloads constructor(
                     adjustingSelection = true
                     setSelection(cappedFirst)
                     adjustingSelection = false
-                    lastEditWasDeletion = false
+                    lastEvent = null
                     return
                 }
             }
@@ -533,16 +534,11 @@ class MaskedEditText @JvmOverloads constructor(
             if (selStart <= lastSlot) {
                 val slots = formatter.validPositions
                 val isAtValid = slots.contains(selStart)
-                val validPosition = when {
-                    isAtValid -> selStart
-                    lastEditWasDeletion ->
-                        // Prefer previous editable slot when deleting across literals
+                val validPosition = if (isAtValid) selStart else when (lastEvent) {
+                    InputEvent.CHARACTER_DELETED ->
                         (slots.lastOrNull { it < selStart } ?: (firstSlot ?: 0)).coerceIn(0, textLength)
-
-                    lastEditWasTyping ->
-                        // Prefer next editable slot when typing across literals
+                    InputEvent.CHARACTER_TYPED ->
                         (slots.firstOrNull { it > selStart } ?: slots.last()).coerceIn(0, textLength)
-
                     else -> formatter.nearestValidPosition(selStart.coerceAtLeast(0)).coerceIn(0, textLength)
                 }
                 val cappedPosition = validPosition.coerceIn(0, textLength)
@@ -550,8 +546,7 @@ class MaskedEditText @JvmOverloads constructor(
                     adjustingSelection = true
                     setSelection(cappedPosition)
                     adjustingSelection = false
-                    lastEditWasDeletion = false
-                    lastEditWasTyping = false
+                    lastEvent = null
                     return
                 }
             } else if (selStart > allowedTrailing) {
@@ -560,15 +555,12 @@ class MaskedEditText @JvmOverloads constructor(
                     adjustingSelection = true
                     setSelection(capped)
                     adjustingSelection = false
-                    lastEditWasDeletion = false
-                    lastEditWasTyping = false
+                    lastEvent = null
                     return
                 }
             }
         }
 
-        lastEditWasDeletion = false
-        lastEditWasTyping = false
         super.onSelectionChanged(selStart, selEnd)
     }
 
