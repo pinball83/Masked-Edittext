@@ -577,23 +577,26 @@ class MaskedEditText @JvmOverloads constructor(
             object : InputConnectionWrapper(base, true) {
 
                 override fun sendKeyEvent(event: KeyEvent): Boolean {
-                    // Some IMEs send explicit DEL key events
+                    // Some IMEs send explicit DEL key events; mirror backspace behavior
                     if (event.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_DEL) {
                         val formatter = maskFormatter
                         if (formatter != null && selectionStart == selectionEnd) {
                             val caret = selectionStart
                             val slots = formatter.validPositions
-                            if (!slots.contains(caret - 1)) {
-                                val prevSlot = slots.lastOrNull { it < caret }
-                                    ?: formatter.firstValidPosition()
-                                val newSel = ((prevSlot ?: 0) + 1).coerceIn(
-                                    0,
-                                    this@MaskedEditText.text?.length ?: 0
-                                )
-                                if (newSel != caret) {
-                                    this@MaskedEditText.setSelection(newSel - 1)
-                                }
+                            val textLen = this@MaskedEditText.text?.length ?: 0
+                            val prevSlot = slots.lastOrNull { it < caret } ?: (formatter.firstValidPosition() ?: 0)
+                            val newCaret = (prevSlot + 1).coerceIn(0, textLen)
+                            if (newCaret != caret) {
+                                this@MaskedEditText.adjustingSelection = true
+                                this@MaskedEditText.setSelection(newCaret)
+                                this@MaskedEditText.adjustingSelection = false
                             }
+                            if (prevSlot >= 0) {
+                                val from = prevSlot.coerceAtLeast(0)
+                                val to = (prevSlot + 1).coerceAtMost(textLen)
+                                if (to > from) this@MaskedEditText.text?.delete(from, to)
+                            }
+                            return true
                         }
                     }
                     return super.sendKeyEvent(event)
