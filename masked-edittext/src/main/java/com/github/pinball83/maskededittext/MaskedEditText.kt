@@ -511,7 +511,6 @@ class MaskedEditText @JvmOverloads constructor(
                     adjustingSelection = true
                     setSelection(firstSlot)
                     adjustingSelection = false
-                    lastEvent = null
                     return
                 }
             }
@@ -523,7 +522,6 @@ class MaskedEditText @JvmOverloads constructor(
                     adjustingSelection = true
                     setSelection(cappedFirst)
                     adjustingSelection = false
-                    lastEvent = null
                     return
                 }
             }
@@ -546,7 +544,6 @@ class MaskedEditText @JvmOverloads constructor(
                     adjustingSelection = true
                     setSelection(cappedPosition)
                     adjustingSelection = false
-                    lastEvent = null
                     return
                 }
             } else if (selStart > allowedTrailing) {
@@ -555,7 +552,6 @@ class MaskedEditText @JvmOverloads constructor(
                     adjustingSelection = true
                     setSelection(capped)
                     adjustingSelection = false
-                    lastEvent = null
                     return
                 }
             }
