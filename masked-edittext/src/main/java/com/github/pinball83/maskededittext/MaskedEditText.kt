@@ -35,8 +35,6 @@ class MaskedEditText @JvmOverloads constructor(
     private var maskIcon: Drawable? = null
 
     private var maskFormatter: MaskFormatter? = null
-    private var firstAllowedPosition: Int = 0
-    private var lastAllowedPosition: Int = 0
     private var userFocusChangeListener: OnFocusChangeListener? = null
 
     private var stateChangeListener: InputStateMachine.InputStateListener? = null
@@ -128,8 +126,6 @@ class MaskedEditText @JvmOverloads constructor(
 
         val formatter = maskFormatter
         if (formatter != null) {
-            firstAllowedPosition = formatter.firstValidPosition() ?: 0
-            lastAllowedPosition = formatter.lastValidPosition() ?: 0
             filters = arrayOf(MaskedInputFilter())
             setOnTouchListener(this)
             super.setOnFocusChangeListener(this)
@@ -161,26 +157,7 @@ class MaskedEditText @JvmOverloads constructor(
         })
     }
 
-    private fun applyMask() {
-        val formatter = maskFormatter
-        if (formatter == null) {
-            return
-        }
-
-        val currentText = text?.toString().orEmpty()
-        val unmaskedText = formatter.unmask(currentText)
-        val maskedText = formatter.mask(unmaskedText)
-
-        if (currentText != maskedText) {
-            setText(maskedText)
-            setSelection(getValidCursorPosition(maskedText.length))
-        }
-    }
-
-    private fun applyMaskToText(input: String): String {
-        val formatter = maskFormatter ?: return input
-        return formatter.mask(input)
-    }
+    // applyMask/applyMaskToText were unused; mask application is done inline
 
     fun getUnmaskedText(maskedText: String = text?.toString().orEmpty()): String {
         val formatter = maskFormatter ?: return maskedText
@@ -192,10 +169,7 @@ class MaskedEditText @JvmOverloads constructor(
         return formatter.formatOutput(getUnmaskedText())
     }
 
-    private fun getValidCursorPosition(position: Int): Int {
-        val formatter = maskFormatter ?: return position
-        return formatter.nearestValidPosition(position)
-    }
+    // Cursor policy handled by selection change logic
 
     override fun onTouch(v: View?, event: MotionEvent?): Boolean {
         if (event?.action == MotionEvent.ACTION_UP && maskIcon != null) {
@@ -531,14 +505,8 @@ class MaskedEditText @JvmOverloads constructor(
 
             if (selStart <= lastSlot) {
                 val slots = formatter.validPositions
-                val isAtValid = slots.contains(selStart)
-                val validPosition = if (isAtValid) selStart else when (lastEvent) {
-                    InputEvent.CHARACTER_DELETED ->
-                        (slots.lastOrNull { it < selStart } ?: (firstSlot ?: 0)).coerceIn(0, textLength)
-                    InputEvent.CHARACTER_TYPED ->
-                        (slots.firstOrNull { it > selStart } ?: slots.last()).coerceIn(0, textLength)
-                    else -> formatter.nearestValidPosition(selStart.coerceAtLeast(0)).coerceIn(0, textLength)
-                }
+                val validPosition = stateMachine?.caretPolicy(selStart, textLength, slots, firstSlot)
+                    ?: selStart
                 val cappedPosition = validPosition.coerceIn(0, textLength)
                 if (cappedPosition != selStart) {
                     adjustingSelection = true

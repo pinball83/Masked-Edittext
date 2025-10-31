@@ -22,6 +22,7 @@ class InputStateMachine(
     private var currentState: InputState = InputState.EMPTY
     private val transitions: MutableMap<StateTransitionKey, InputState> = HashMap()
     private var maskEvaluator: MaskEvaluator? = null
+    private var lastEvent: InputEvent? = null
 
     init {
         initializeTransitions()
@@ -68,6 +69,7 @@ class InputStateMachine(
     }
 
     fun processEvent(event: InputEvent) {
+        lastEvent = event
         val oldState = currentState
         val key = StateTransitionKey(currentState, event)
         var newState = transitions[key]
@@ -87,6 +89,52 @@ class InputStateMachine(
         if (oldState != currentState) {
             stateListener?.onStateChanged(oldState, currentState, event)
         }
+    }
+
+    fun getLastEvent(): InputEvent? = lastEvent
+
+    /**
+     * Computes a caret position policy based on the last input event and editable slot positions.
+     * - If caret is already on a slot, keep it.
+     * - If last event was delete, prefer previous slot.
+     * - If last event was type, prefer next slot.
+     * - Otherwise choose nearest slot (ties prefer forward).
+     */
+    fun caretPolicy(selStart: Int, textLength: Int, slots: List<Int>, firstSlot: Int?): Int {
+        if (slots.isEmpty() || textLength <= 0) return selStart.coerceIn(0, textLength)
+        val clampedSel = selStart.coerceIn(0, textLength)
+        if (slots.contains(clampedSel)) return clampedSel
+
+        return when (lastEvent) {
+            InputEvent.CHARACTER_DELETED -> previousSlot(clampedSel, slots, firstSlot)
+            InputEvent.CHARACTER_TYPED -> nextSlot(clampedSel, slots)
+            else -> nearestSlot(clampedSel, slots)
+        }.coerceIn(0, textLength)
+    }
+
+    private fun previousSlot(pos: Int, slots: List<Int>, firstSlot: Int?): Int {
+        val candidate = slots.lastOrNull { it < pos } ?: firstSlot ?: slots.first()
+        return candidate
+    }
+
+    private fun nextSlot(pos: Int, slots: List<Int>): Int {
+        val candidate = slots.firstOrNull { it > pos } ?: slots.last()
+        return candidate
+    }
+
+    private fun nearestSlot(pos: Int, slots: List<Int>): Int {
+        // Assumes slots sorted ascending
+        if (pos <= slots.first()) return slots.first()
+        if (pos >= slots.last()) return slots.last()
+        var lower = slots.first()
+        var upper = slots.last()
+        for (s in slots) {
+            if (s >= pos) { upper = s; break }
+            lower = s
+        }
+        val distDown = pos - lower
+        val distUp = upper - pos
+        return if (distUp <= distDown) upper else lower
     }
 
     private fun handleSpecialTransition(currentState: InputState, event: InputEvent): InputState? {
