@@ -23,6 +23,7 @@ class InputStateMachine(
     private val transitions: MutableMap<StateTransitionKey, InputState> = HashMap()
     private var maskEvaluator: MaskEvaluator? = null
     private var lastEvent: InputEvent? = null
+    private var composing: Boolean = false
 
     init {
         initializeTransitions()
@@ -111,6 +112,67 @@ class InputStateMachine(
             else -> nearestSlot(clampedSel, slots)
         }.coerceIn(0, textLength)
     }
+
+    /**
+     * Same as caretPolicy, but uses provided event when non-null.
+     */
+    fun caretPolicyFor(
+        event: InputEvent?,
+        selStart: Int,
+        textLength: Int,
+        slots: List<Int>,
+        firstSlot: Int?
+    ): Int {
+        if (slots.isEmpty() || textLength <= 0) return selStart.coerceIn(0, textLength)
+        val clampedSel = selStart.coerceIn(0, textLength)
+        if (slots.contains(clampedSel)) return clampedSel
+        val ev = event ?: lastEvent
+        return when (ev) {
+            InputEvent.CHARACTER_DELETED -> previousSlot(clampedSel, slots, firstSlot)
+            InputEvent.CHARACTER_TYPED -> nextSlot(clampedSel, slots)
+            else -> nearestSlot(clampedSel, slots)
+        }.coerceIn(0, textLength)
+    }
+
+    // --- Interaction helpers (optional, internal) ---
+    fun setComposing(active: Boolean) {
+        composing = active
+    }
+
+    fun isComposing(): Boolean = composing
+
+    data class SelectionInfo(val kind: Kind, val start: Int, val end: Int) {
+        enum class Kind {
+            CollapsedAtSlot,
+            CollapsedAtLiteral,
+            Range,
+            BeforeFirst,
+            AfterLast
+        }
+    }
+
+    fun computeSelectionInfo(
+        selStart: Int,
+        selEnd: Int,
+        textLength: Int,
+        slots: List<Int>
+    ): SelectionInfo {
+        val start = selStart.coerceIn(0, textLength)
+        val end = selEnd.coerceIn(0, textLength)
+        if (start != end) return SelectionInfo(SelectionInfo.Kind.Range, start, end)
+        if (slots.isEmpty()) return SelectionInfo(SelectionInfo.Kind.CollapsedAtLiteral, start, end)
+        val first = slots.first()
+        val last = slots.last()
+        val allowedTrailing = (last + 1).coerceAtMost(textLength)
+        return when {
+            start < first -> SelectionInfo(SelectionInfo.Kind.BeforeFirst, start, end)
+            start > allowedTrailing -> SelectionInfo(SelectionInfo.Kind.AfterLast, start, end)
+            slots.contains(start) -> SelectionInfo(SelectionInfo.Kind.CollapsedAtSlot, start, end)
+            else -> SelectionInfo(SelectionInfo.Kind.CollapsedAtLiteral, start, end)
+        }
+    }
+
+    fun isCaretAtLiteral(selStart: Int, slots: List<Int>): Boolean = !slots.contains(selStart)
 
     private fun previousSlot(pos: Int, slots: List<Int>, firstSlot: Int?): Int {
         val candidate = slots.lastOrNull { it < pos } ?: firstSlot ?: slots.first()

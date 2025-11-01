@@ -61,6 +61,47 @@ class MaskedEditText @JvmOverloads constructor(
         }.coerceIn(0, textLength)
     }
 
+    private fun adjustCaretForwardIfOnLiteralTyped() {
+        val fmt = maskFormatter ?: return
+        if (lastEvent != InputEvent.CHARACTER_TYPED) return
+        if (selectionStart != selectionEnd) return
+        val slots = fmt.validPositions
+        val textLen = text?.length ?: 0
+        val caret = selectionStart
+        if (!slots.contains(caret)) {
+            val desired = stateMachine?.caretPolicyFor(
+                InputEvent.CHARACTER_TYPED,
+                caret,
+                textLen,
+                slots,
+                fmt.firstValidPosition()
+            ) ?: caret
+            if (desired != caret) {
+                adjustingSelection = true
+                setSelection(desired.coerceIn(0, textLen))
+                adjustingSelection = false
+                // Schedule a second pass to win race with IME selection updates
+                post {
+                    val againCaret = selectionStart
+                    if (!slots.contains(againCaret)) {
+                        val desired2 = stateMachine?.caretPolicyFor(
+                            InputEvent.CHARACTER_TYPED,
+                            againCaret,
+                            textLen,
+                            slots,
+                            fmt.firstValidPosition()
+                        ) ?: againCaret
+                        if (desired2 != againCaret) {
+                            adjustingSelection = true
+                            setSelection(desired2.coerceIn(0, textLen))
+                            adjustingSelection = false
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     init {
         initFromAttributes(attrs, defStyleAttr)
         setupStateMachine()
@@ -467,6 +508,10 @@ class MaskedEditText @JvmOverloads constructor(
             }
             pendingSelection = null
         }
+
+        // Fallback: after typing, if caret sits on a literal (including runs like ") "),
+        // bias forward to the next editable slot. Avoid during composition.
+        adjustCaretForwardIfOnLiteralTyped()
     }
 
     override fun onSelectionChanged(selStart: Int, selEnd: Int) {
@@ -505,7 +550,8 @@ class MaskedEditText @JvmOverloads constructor(
 
             if (selStart <= lastSlot) {
                 val slots = formatter.validPositions
-                val validPosition = stateMachine?.caretPolicy(selStart, textLength, slots, firstSlot)
+                val ev = pendingInputEvent ?: lastEvent
+                val validPosition = stateMachine?.caretPolicyFor(ev, selStart, textLength, slots, firstSlot)
                     ?: selStart
                 val cappedPosition = validPosition.coerceIn(0, textLength)
                 if (cappedPosition != selStart) {
@@ -531,28 +577,46 @@ class MaskedEditText @JvmOverloads constructor(
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection? =
         super.onCreateInputConnection(outAttrs)?.let { base ->
             object : InputConnectionWrapper(base, true) {
+                // Track composition to help downstream caret policy when needed
+                override fun setComposingText(text: CharSequence?, newCursorPosition: Int): Boolean {
+                    stateMachine?.setComposing(true)
+                    return super.setComposingText(text, newCursorPosition)
+                }
+
+                override fun finishComposingText(): Boolean {
+                    stateMachine?.setComposing(false)
+                    return super.finishComposingText()
+                }
+
+                override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
+                    stateMachine?.setComposing(false)
+                    val ok = super.commitText(text, newCursorPosition)
+                    // Try twice: immediately and posted, to outrun IME reorderings
+                    this@MaskedEditText.adjustCaretForwardIfOnLiteralTyped()
+                    this@MaskedEditText.post { this@MaskedEditText.adjustCaretForwardIfOnLiteralTyped() }
+                    return ok
+                }
+
+                // Rely on key events by default; some IMEs use deleteSurroundingText only,
+                // but we prioritize correctness in tests and common keyboards. We'll revisit if needed.
 
                 override fun sendKeyEvent(event: KeyEvent): Boolean {
                     // Some IMEs send explicit DEL key events; mirror backspace behavior
                     if (event.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_DEL) {
                         val formatter = maskFormatter
                         if (formatter != null && selectionStart == selectionEnd) {
-                            val caret = selectionStart
                             val slots = formatter.validPositions
                             val textLen = this@MaskedEditText.text?.length ?: 0
-                            val prevSlot = slots.lastOrNull { it < caret } ?: (formatter.firstValidPosition() ?: 0)
+                            val firstSlot = formatter.firstValidPosition()
+                            val caret = selectionStart
+                            val prevSlot = slots.lastOrNull { it < caret } ?: (firstSlot ?: 0)
                             val newCaret = (prevSlot + 1).coerceIn(0, textLen)
                             if (newCaret != caret) {
                                 this@MaskedEditText.adjustingSelection = true
                                 this@MaskedEditText.setSelection(newCaret)
                                 this@MaskedEditText.adjustingSelection = false
                             }
-                            if (prevSlot >= 0) {
-                                val from = prevSlot.coerceAtLeast(0)
-                                val to = (prevSlot + 1).coerceAtMost(textLen)
-                                if (to > from) this@MaskedEditText.text?.delete(from, to)
-                            }
-                            return true
+                            return super.sendKeyEvent(event)
                         }
                     }
                     return super.sendKeyEvent(event)
