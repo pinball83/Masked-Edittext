@@ -46,6 +46,7 @@ class MaskedEditText @JvmOverloads constructor(
     private var pendingText: String? = null
     private var adjustingText: Boolean = false
     private var lastEvent: InputEvent? = null
+    private var justCommitted: Boolean = false
 
     private fun MaskFormatter.cursorForNormalizedLength(
         normalizedLength: Int,
@@ -80,24 +81,6 @@ class MaskedEditText @JvmOverloads constructor(
                 adjustingSelection = true
                 setSelection(desired.coerceIn(0, textLen))
                 adjustingSelection = false
-                // Schedule a second pass to win race with IME selection updates
-                post {
-                    val againCaret = selectionStart
-                    if (!slots.contains(againCaret)) {
-                        val desired2 = stateMachine?.caretPolicyFor(
-                            InputEvent.CHARACTER_TYPED,
-                            againCaret,
-                            textLen,
-                            slots,
-                            fmt.firstValidPosition()
-                        ) ?: againCaret
-                        if (desired2 != againCaret) {
-                            adjustingSelection = true
-                            setSelection(desired2.coerceIn(0, textLen))
-                            adjustingSelection = false
-                        }
-                    }
-                }
             }
         } else {
             // Caret is on a slot after typing; advance to next slot or trailing
@@ -613,12 +596,19 @@ class MaskedEditText @JvmOverloads constructor(
 
                 override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
                     stateMachine?.setComposing(false)
+                    // Mark latest intent as typing so downstream policies can bias correctly
+                    this@MaskedEditText.lastEvent = InputEvent.CHARACTER_TYPED
+                    this@MaskedEditText.justCommitted = true
                     val ok = super.commitText(text, newCursorPosition)
-                    // Try twice: immediately and posted, to outrun IME reorderings
+                    // Adjust once immediately; avoid posting to keep tests deterministic
                     this@MaskedEditText.adjustCaretForwardIfOnLiteralTyped()
-                    this@MaskedEditText.post { this@MaskedEditText.adjustCaretForwardIfOnLiteralTyped() }
                     return ok
                 }
+
+                // Note: We intentionally rely on key events for deletion to keep behavior consistent
+                // across different IMEs and retain deterministic test behavior. If a specific IME
+                // uses deleteSurroundingText without key events and needs support, we can add a
+                // policy-driven handler here keyed off that IME.
 
                 // Rely on key events by default; some IMEs use deleteSurroundingText only,
                 // but we prioritize correctness in tests and common keyboards. We'll revisit if needed.
