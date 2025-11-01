@@ -70,7 +70,9 @@ class InputStateMachine(
     }
 
     fun processEvent(event: InputEvent) {
-        lastEvent = event
+        if (event != InputEvent.VALIDATE) {
+            lastEvent = event
+        }
         val oldState = currentState
         val key = StateTransitionKey(currentState, event)
         var newState = transitions[key]
@@ -104,12 +106,18 @@ class InputStateMachine(
     fun caretPolicy(selStart: Int, textLength: Int, slots: List<Int>, firstSlot: Int?): Int {
         if (slots.isEmpty() || textLength <= 0) return selStart.coerceIn(0, textLength)
         val clampedSel = selStart.coerceIn(0, textLength)
-        if (slots.contains(clampedSel)) return clampedSel
+        val trailing = ((slots.lastOrNull() ?: -1) + 1).coerceAtMost(textLength)
+        if (clampedSel >= trailing) return trailing
+        val isOnSlot = slots.contains(clampedSel)
 
         return when (lastEvent) {
-            InputEvent.CHARACTER_DELETED -> previousSlot(clampedSel, slots, firstSlot)
-            InputEvent.CHARACTER_TYPED -> nextSlot(clampedSel, slots)
-            else -> nearestSlot(clampedSel, slots)
+            InputEvent.CHARACTER_DELETED -> {
+                if (isOnSlot) previousSlot(clampedSel, slots, firstSlot) else previousSlot(clampedSel, slots, firstSlot)
+            }
+            InputEvent.CHARACTER_TYPED -> {
+                if (isOnSlot) nextOrTrailing(clampedSel, slots, textLength) else nextSlot(clampedSel, slots)
+            }
+            else -> if (isOnSlot) clampedSel else nearestSlot(clampedSel, slots)
         }.coerceIn(0, textLength)
     }
 
@@ -125,12 +133,14 @@ class InputStateMachine(
     ): Int {
         if (slots.isEmpty() || textLength <= 0) return selStart.coerceIn(0, textLength)
         val clampedSel = selStart.coerceIn(0, textLength)
-        if (slots.contains(clampedSel)) return clampedSel
+        val trailing = ((slots.lastOrNull() ?: -1) + 1).coerceAtMost(textLength)
+        if (clampedSel >= trailing) return trailing
+        val isOnSlot = slots.contains(clampedSel)
         val ev = event ?: lastEvent
         return when (ev) {
-            InputEvent.CHARACTER_DELETED -> previousSlot(clampedSel, slots, firstSlot)
-            InputEvent.CHARACTER_TYPED -> nextSlot(clampedSel, slots)
-            else -> nearestSlot(clampedSel, slots)
+            InputEvent.CHARACTER_DELETED -> if (isOnSlot) previousSlot(clampedSel, slots, firstSlot) else previousSlot(clampedSel, slots, firstSlot)
+            InputEvent.CHARACTER_TYPED -> if (isOnSlot) nextOrTrailing(clampedSel, slots, textLength) else nextSlot(clampedSel, slots)
+            else -> if (isOnSlot) clampedSel else nearestSlot(clampedSel, slots)
         }.coerceIn(0, textLength)
     }
 
@@ -166,7 +176,7 @@ class InputStateMachine(
         val allowedTrailing = (last + 1).coerceAtMost(textLength)
         return when {
             start < first -> SelectionInfo(SelectionInfo.Kind.BeforeFirst, start, end)
-            start > allowedTrailing -> SelectionInfo(SelectionInfo.Kind.AfterLast, start, end)
+            start >= allowedTrailing -> SelectionInfo(SelectionInfo.Kind.AfterLast, start, end)
             slots.contains(start) -> SelectionInfo(SelectionInfo.Kind.CollapsedAtSlot, start, end)
             else -> SelectionInfo(SelectionInfo.Kind.CollapsedAtLiteral, start, end)
         }
@@ -182,6 +192,12 @@ class InputStateMachine(
     private fun nextSlot(pos: Int, slots: List<Int>): Int {
         val candidate = slots.firstOrNull { it > pos } ?: slots.last()
         return candidate
+    }
+
+    private fun nextOrTrailing(pos: Int, slots: List<Int>, textLength: Int): Int {
+        val idx = slots.indexOf(pos)
+        if (idx == -1) return nextSlot(pos, slots)
+        return if (idx < slots.size - 1) slots[idx + 1] else (slots.last() + 1).coerceAtMost(textLength)
     }
 
     private fun nearestSlot(pos: Int, slots: List<Int>): Int {

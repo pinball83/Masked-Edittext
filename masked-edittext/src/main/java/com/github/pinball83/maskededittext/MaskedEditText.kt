@@ -99,6 +99,20 @@ class MaskedEditText @JvmOverloads constructor(
                     }
                 }
             }
+        } else {
+            // Caret is on a slot after typing; advance to next slot or trailing
+            val desired = stateMachine?.caretPolicyFor(
+                InputEvent.CHARACTER_TYPED,
+                caret,
+                textLen,
+                slots,
+                fmt.firstValidPosition()
+            ) ?: caret
+            if (desired != caret) {
+                adjustingSelection = true
+                setSelection(desired.coerceIn(0, textLen))
+                adjustingSelection = false
+            }
         }
     }
 
