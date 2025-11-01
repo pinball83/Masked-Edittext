@@ -521,53 +521,62 @@ class MaskedEditText @JvmOverloads constructor(
         }
 
         val formatter = maskFormatter
-        if (formatter != null && selStart == selEnd) {
+        if (formatter != null) {
             val textLength = text?.length ?: 0
-            val currentState = stateMachine?.getCurrentState()
-            if (currentState == InputState.EMPTY) {
-                val firstSlot = (formatter.firstValidPosition() ?: 0).coerceIn(0, textLength)
-                if (selStart != firstSlot) {
-                    adjustingSelection = true
-                    setSelection(firstSlot)
-                    adjustingSelection = false
-                    return
-                }
-            }
-
+            val slots = formatter.validPositions
             val firstSlot = formatter.firstValidPosition()
-            if (firstSlot != null && selStart < firstSlot) {
-                val cappedFirst = firstSlot.coerceIn(0, textLength)
-                if (selStart != cappedFirst) {
+
+            // Snap to first slot when input is EMPTY
+            if (selStart == selEnd && stateMachine?.getCurrentState() == InputState.EMPTY) {
+                val target = (firstSlot ?: 0).coerceIn(0, textLength)
+                if (selStart != target) {
                     adjustingSelection = true
-                    setSelection(cappedFirst)
+                    setSelection(target)
                     adjustingSelection = false
+                    super.onSelectionChanged(target, target)
                     return
                 }
             }
 
-            val lastSlot = formatter.lastValidPosition() ?: -1
-            val allowedTrailing = (lastSlot + 1).coerceAtMost(textLength)
-
-            if (selStart <= lastSlot) {
-                val slots = formatter.validPositions
-                val ev = pendingInputEvent ?: lastEvent
-                val validPosition = stateMachine?.caretPolicyFor(ev, selStart, textLength, slots, firstSlot)
-                    ?: selStart
-                val cappedPosition = validPosition.coerceIn(0, textLength)
-                if (cappedPosition != selStart) {
-                    adjustingSelection = true
-                    setSelection(cappedPosition)
-                    adjustingSelection = false
-                    return
+            // Use selection introspection to normalize caret
+            val sel = stateMachine?.computeSelectionInfo(selStart, selEnd, textLength, slots)
+            when (sel?.kind) {
+                InputStateMachine.SelectionInfo.Kind.BeforeFirst -> {
+                    val target = (firstSlot ?: 0).coerceIn(0, textLength)
+                    if (selStart != target) {
+                        adjustingSelection = true
+                        setSelection(target)
+                        adjustingSelection = false
+                        super.onSelectionChanged(target, target)
+                        return
+                    }
                 }
-            } else if (selStart > allowedTrailing) {
-                val capped = allowedTrailing.coerceIn(0, textLength)
-                if (capped != selStart) {
-                    adjustingSelection = true
-                    setSelection(capped)
-                    adjustingSelection = false
-                    return
+                InputStateMachine.SelectionInfo.Kind.AfterLast -> {
+                    val lastSlot = formatter.lastValidPosition() ?: -1
+                    val allowedTrailing = (lastSlot + 1).coerceAtMost(textLength)
+                    val target = allowedTrailing.coerceIn(0, textLength)
+                    if (selStart != target) {
+                        adjustingSelection = true
+                        setSelection(target)
+                        adjustingSelection = false
+                        super.onSelectionChanged(target, target)
+                        return
+                    }
                 }
+                InputStateMachine.SelectionInfo.Kind.CollapsedAtLiteral -> {
+                    val ev = pendingInputEvent ?: lastEvent
+                    val target = stateMachine?.caretPolicyFor(ev, selStart, textLength, slots, firstSlot)
+                        ?.coerceIn(0, textLength)
+                    if (target != null && target != selStart) {
+                        adjustingSelection = true
+                        setSelection(target)
+                        adjustingSelection = false
+                        super.onSelectionChanged(target, target)
+                        return
+                    }
+                }
+                // Range or CollapsedAtSlot: no correction
+                else -> { /* no-op */ }
             }
         }
 
