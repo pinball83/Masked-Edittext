@@ -46,7 +46,8 @@ class MaskedEditText @JvmOverloads constructor(
     private var pendingText: String? = null
     private var adjustingText: Boolean = false
     private var lastEvent: InputEvent? = null
-    private var justCommitted: Boolean = false
+    private var deferFocusSelection: Boolean = false
+    private val cursorController = CursorPolicyController()
 
     private fun MaskFormatter.cursorForNormalizedLength(
         normalizedLength: Int,
@@ -62,6 +63,17 @@ class MaskedEditText @JvmOverloads constructor(
         }.coerceIn(0, textLength)
     }
 
+    private fun setSelectionSafely(position: Int) {
+        val target = position.coerceIn(0, text?.length ?: 0)
+        if (!adjustingSelection) {
+            adjustingSelection = true
+            setSelection(target)
+            adjustingSelection = false
+        } else {
+            setSelection(target)
+        }
+    }
+
     private fun adjustCaretForwardIfOnLiteralTyped() {
         val fmt = maskFormatter ?: return
         if (lastEvent != InputEvent.CHARACTER_TYPED) return
@@ -70,20 +82,6 @@ class MaskedEditText @JvmOverloads constructor(
         val textLen = text?.length ?: 0
         val caret = selectionStart
         if (!slots.contains(caret)) {
-            val desired = stateMachine?.caretPolicyFor(
-                InputEvent.CHARACTER_TYPED,
-                caret,
-                textLen,
-                slots,
-                fmt.firstValidPosition()
-            ) ?: caret
-            if (desired != caret) {
-                adjustingSelection = true
-                setSelection(desired.coerceIn(0, textLen))
-                adjustingSelection = false
-            }
-        } else {
-            // Caret is on a slot after typing; advance to next slot or trailing
             val desired = stateMachine?.caretPolicyFor(
                 InputEvent.CHARACTER_TYPED,
                 caret,
@@ -164,6 +162,9 @@ class MaskedEditText @JvmOverloads constructor(
 
         val formatter = maskFormatter
         if (formatter != null) {
+            // Auto mode: enable deferred focus selection if the first slot is not at index 0
+            val firstSlotAuto = (formatter.firstValidPosition() ?: 0)
+            deferFocusSelection = firstSlotAuto > 0
             filters = arrayOf(MaskedInputFilter())
             setOnTouchListener(this)
             super.setOnFocusChangeListener(this)
@@ -176,7 +177,7 @@ class MaskedEditText @JvmOverloads constructor(
             val normalizedLength = formatter.normalize(getUnmaskedText()).length
             val cursorPosition =
                 formatter.cursorForNormalizedLength(normalizedLength, reApplied.length)
-            setSelection(cursorPosition)
+            setSelectionSafely(cursorPosition)
         } else {
             filters = arrayOf()
         }
@@ -227,21 +228,31 @@ class MaskedEditText @JvmOverloads constructor(
             stateMachine?.processEvent(InputEvent.FOCUS_GAINED)
             val formatter = maskFormatter
             if (formatter != null) {
-                val normalized = formatter.normalize(getUnmaskedText())
-                if (normalized.isEmpty()) {
-                    val position = formatter.firstValidPosition() ?: 0
-                    adjustingSelection = true
-                    setSelection(position)
-                    adjustingSelection = false
+                val unmasked = getUnmaskedText()
+                val normalized = formatter.normalize(unmasked)
+                val currentMaskedLen = text?.length ?: 0
+                val target = formatter.cursorForNormalizedLength(normalized.length, currentMaskedLen)
+                setSelectionSafely(target)
+                if (deferFocusSelection) {
+                    // Reassert on next frame to outrun IME-set selection on some keyboards
+                    post { setSelectionSafely(target) }
                 }
             } else if (text.isNullOrEmpty()) {
-                setSelection(0)
+                setSelectionSafely(0)
             }
         } else {
             stateMachine?.processEvent(InputEvent.FOCUS_LOST)
         }
 
         userFocusChangeListener?.onFocusChange(v, hasFocus)
+    }
+
+    /**
+     * When enabled, reasserts caret position once more after focus gain on the next frame.
+     * Useful for IMEs that set selection after we do on focus.
+     */
+    fun setDeferFocusSelection(enabled: Boolean) {
+        deferFocusSelection = enabled
     }
 
     override fun setOnFocusChangeListener(l: OnFocusChangeListener?) {
@@ -496,6 +507,7 @@ class MaskedEditText @JvmOverloads constructor(
             stateMachine?.processEvent(InputEvent.VALIDATE)
         }
 
+        var movedByFilter = false
         pendingSelection?.let { desired ->
             val target = desired.coerceIn(0, text?.length ?: 0)
             if (!adjustingSelection) {
@@ -504,11 +516,24 @@ class MaskedEditText @JvmOverloads constructor(
                 adjustingSelection = false
             }
             pendingSelection = null
+            movedByFilter = true
         }
 
-        // Fallback: after typing, if caret sits on a literal (including runs like ") "),
-        // bias forward to the next editable slot. Avoid during composition.
-        adjustCaretForwardIfOnLiteralTyped()
+        // Centralized caret advance after any text insertion (handles multi-char commits and IME orderings)
+        run {
+            val fmt = maskFormatter
+            val sm = stateMachine
+            val textLen = text?.length ?: 0
+            if (fmt != null && sm != null && selectionStart == selectionEnd) {
+                // If we're already at the focus target (next empty slot or trailing), do nothing
+                val focusTarget = cursorController.focusTarget(fmt, getUnmaskedText(), textLen)
+                if (selectionStart != focusTarget) {
+                    cursorController.afterTypedAdvance(selectionStart, textLen, fmt, sm)?.let { desired ->
+                        setSelectionSafely(desired)
+                    }
+                }
+            }
+        }
     }
 
     override fun onSelectionChanged(selStart: Int, selEnd: Int) {
@@ -520,60 +545,22 @@ class MaskedEditText @JvmOverloads constructor(
         val formatter = maskFormatter
         if (formatter != null) {
             val textLength = text?.length ?: 0
-            val slots = formatter.validPositions
-            val firstSlot = formatter.firstValidPosition()
-
-            // Snap to first slot when input is EMPTY
-            if (selStart == selEnd && stateMachine?.getCurrentState() == InputState.EMPTY) {
-                val target = (firstSlot ?: 0).coerceIn(0, textLength)
-                if (selStart != target) {
-                    adjustingSelection = true
-                    setSelection(target)
-                    adjustingSelection = false
+            val sm = stateMachine
+            if (sm != null) {
+                val target = cursorController.selectionCorrection(
+                    selStart = selStart,
+                    selEnd = selEnd,
+                    textLength = textLength,
+                    formatter = formatter,
+                    stateMachine = sm,
+                    pendingEvent = pendingInputEvent,
+                    lastEvent = lastEvent
+                )
+                if (target != null && target != selStart) {
+                    setSelectionSafely(target)
                     super.onSelectionChanged(target, target)
                     return
                 }
-            }
-
-            // Use selection introspection to normalize caret
-            val sel = stateMachine?.computeSelectionInfo(selStart, selEnd, textLength, slots)
-            when (sel?.kind) {
-                InputStateMachine.SelectionInfo.Kind.BeforeFirst -> {
-                    val target = (firstSlot ?: 0).coerceIn(0, textLength)
-                    if (selStart != target) {
-                        adjustingSelection = true
-                        setSelection(target)
-                        adjustingSelection = false
-                        super.onSelectionChanged(target, target)
-                        return
-                    }
-                }
-                InputStateMachine.SelectionInfo.Kind.AfterLast -> {
-                    val lastSlot = formatter.lastValidPosition() ?: -1
-                    val allowedTrailing = (lastSlot + 1).coerceAtMost(textLength)
-                    val target = allowedTrailing.coerceIn(0, textLength)
-                    if (selStart != target) {
-                        adjustingSelection = true
-                        setSelection(target)
-                        adjustingSelection = false
-                        super.onSelectionChanged(target, target)
-                        return
-                    }
-                }
-                InputStateMachine.SelectionInfo.Kind.CollapsedAtLiteral -> {
-                    val ev = pendingInputEvent ?: lastEvent
-                    val target = stateMachine?.caretPolicyFor(ev, selStart, textLength, slots, firstSlot)
-                        ?.coerceIn(0, textLength)
-                    if (target != null && target != selStart) {
-                        adjustingSelection = true
-                        setSelection(target)
-                        adjustingSelection = false
-                        super.onSelectionChanged(target, target)
-                        return
-                    }
-                }
-                // Range or CollapsedAtSlot: no correction
-                else -> { /* no-op */ }
             }
         }
 
@@ -598,10 +585,13 @@ class MaskedEditText @JvmOverloads constructor(
                     stateMachine?.setComposing(false)
                     // Mark latest intent as typing so downstream policies can bias correctly
                     this@MaskedEditText.lastEvent = InputEvent.CHARACTER_TYPED
-                    this@MaskedEditText.justCommitted = true
                     val ok = super.commitText(text, newCursorPosition)
-                    // Adjust once immediately; avoid posting to keep tests deterministic
-                    this@MaskedEditText.adjustCaretForwardIfOnLiteralTyped()
+                    // Adjust once immediately; prefer focus target after commit (handles multi-char paste)
+                    val fmt = maskFormatter
+                    if (fmt != null && selectionStart == selectionEnd) {
+                        val target = cursorController.focusTarget(fmt, this@MaskedEditText.getUnmaskedText(), this@MaskedEditText.text?.length ?: 0)
+                        setSelectionSafely(target)
+                    }
                     return ok
                 }
 
@@ -618,17 +608,10 @@ class MaskedEditText @JvmOverloads constructor(
                     if (event.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_DEL) {
                         val formatter = maskFormatter
                         if (formatter != null && selectionStart == selectionEnd) {
-                            val slots = formatter.validPositions
                             val textLen = this@MaskedEditText.text?.length ?: 0
-                            val firstSlot = formatter.firstValidPosition()
                             val caret = selectionStart
-                            val prevSlot = slots.lastOrNull { it < caret } ?: (firstSlot ?: 0)
-                            val newCaret = (prevSlot + 1).coerceIn(0, textLen)
-                            if (newCaret != caret) {
-                                this@MaskedEditText.adjustingSelection = true
-                                this@MaskedEditText.setSelection(newCaret)
-                                this@MaskedEditText.adjustingSelection = false
-                            }
+                            val newCaret = cursorController.beforeBackspaceReposition(caret, textLen, formatter)
+                            if (newCaret != caret) setSelectionSafely(newCaret)
                             return super.sendKeyEvent(event)
                         }
                     }
@@ -646,6 +629,7 @@ class MaskedEditText @JvmOverloads constructor(
         private var iconCallback: IconCallback? = null
         private var maskIconCallback: MaskIconCallback? = null
         private var stateChangeListener: InputStateMachine.InputStateListener? = null
+        private var deferFocusSelection: Boolean = false
 
         fun mask(mask: String) = apply { this.mask = mask }
 
@@ -678,6 +662,8 @@ class MaskedEditText @JvmOverloads constructor(
             this.stateChangeListener = listener
         }
 
+        fun deferFocusSelection(enabled: Boolean) = apply { this.deferFocusSelection = enabled }
+
         fun build(): MaskedEditText {
             val maskPattern = this.mask
             val placeholderSymbol = this.notMaskedSymbol
@@ -697,6 +683,8 @@ class MaskedEditText @JvmOverloads constructor(
                 setIconCallback(iconClick)
                 setMaskIconCallback(maskIconClick)
                 setStateChangeListener(stateListener)
+                // Override auto-mode if explicitly requested by builder
+                setDeferFocusSelection(this@Builder.deferFocusSelection)
             }
         }
     }
