@@ -14,6 +14,7 @@ buildscript {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'com.github.dcendents:android-maven-gradle-plugin:2.1'
         classpath 'org.jetbrains.kotlin:compose-compiler-gradle-plugin:2.2.0'
+        classpath 'org.jetbrains.kotlinx:kover-gradle-plugin:0.9.3'
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
     }

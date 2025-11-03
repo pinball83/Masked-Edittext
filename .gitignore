@@ -63,3 +63,4 @@ freeline/
 freeline_project_description.json
 
 /.zed/
+/.tool-versions

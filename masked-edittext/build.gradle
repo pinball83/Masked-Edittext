@@ -1,6 +1,7 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'org.jetbrains.kotlin.plugin.compose'
+apply plugin: 'org.jetbrains.kotlinx.kover'
 
 version = '2.2.0'
 
@@ -9,8 +10,8 @@ android {
     buildToolsVersion "35.0.0"
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
 
     defaultConfig {
@@ -29,17 +30,77 @@ android {
     }
     
     kotlinOptions {
-        jvmTarget = '11'
+        jvmTarget = '21'
     }
+
+    testOptions {
+        unitTests.all {
+            // Разрешаем доступ к internal классам JDK 21
+            jvmArgs += [
+                    "--add-opens", "java.base/jdk.internal.reflect=ALL-UNNAMED"
+            ]
+            // (по желанию) более информативные логи при падениях
+            testLogging {
+                events "passed", "skipped", "failed"
+            }
+        }
+    }
+
+//    testOptions {
+//        unitTests.all {
+//            jacoco.includeNoLocationClasses = true
+//            jvmArgs '--add-opens=java.base/java.lang=ALL-UNNAMED',
+//                    '--add-opens=java.base/java.nio=ALL-UNNAMED',
+//                    '--add-opens=java.base/java.net=ALL-UNNAMED',
+//                    '--add-opens=java.base/java.util=ALL-UNNAMED',
+//                    '--add-opens=java.base/java.io=ALL-UNNAMED'
+//        }
+//    }
     
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+        debug {
+            // Enable instrumentation coverage for Espresso tests (Android Test Coverage)
+            testCoverageEnabled true
+        }
     }
     namespace 'com.thrd.maskededittext'
 }
+
+// Kover is applied; default reports are available via:
+//  - :masked-edittext:koverHtmlReport (unit tests)
+//  - :masked-edittext:koverXmlReport
+// If you need custom filters, uncomment the block below once the plugin is fully resolved in your environment.
+// koverReport {
+//     filters {
+//         excludes {
+//             classes('**/R.class', '**/R$*.class', '**/BuildConfig.*', '**/Manifest*.*', '**/*Test*.*')
+//         }
+//     }
+// }
+
+// Helpful alias tasks in this module:
+// - :masked-edittext:koverHtmlReport (unit tests coverage report)
+// - :masked-edittext:koverXmlReport
+// Instrumentation coverage (Espresso) HTML report provided by AGP:
+// - :masked-edittext:createDebugAndroidTestCoverageReport
+
+// Ensure Gradle Test workers have required module opens on JDK 17+
+//tasks.withType(Test).configureEach {
+//    jvmArgs '--add-opens=java.base/java.lang=ALL-UNNAMED',
+//            '--add-opens=java.base/java.lang.invoke=ALL-UNNAMED',
+//            '--add-opens=java.base/java.util=ALL-UNNAMED',
+//            '--add-opens=java.base/java.io=ALL-UNNAMED',
+//            '--add-opens=java.base/jdk.internal.reflect=ALL-UNNAMED'
+//    // Optionally, to force Java 21 toolchain for tests, set -PforceJava21Toolchain
+//    if (project.hasProperty('forceJava21Toolchain')) {
+//        def toolchains = project.extensions.getByType(org.gradle.jvm.toolchain.JavaToolchainService)
+//        javaLauncher.set(toolchains.launcherFor { languageVersion = org.gradle.jvm.toolchain.JavaLanguageVersion.of(21) })
+//    }
+//}
 
 dependencies {
     // Kotlin
@@ -61,10 +122,10 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.robolectric:robolectric:4.16'
     testImplementation 'org.mockito:mockito-core:5.20.0'
-    testImplementation 'org.mockito.kotlin:mockito-kotlin:6.0.0'
+    testImplementation 'org.mockito.kotlin:mockito-kotlin:6.1.0'
     testImplementation 'org.hamcrest:hamcrest-library:3.0'
     testImplementation "androidx.compose.ui:ui-test-junit4:$compose_version"
-    testImplementation 'org.jetbrains.kotlin:kotlin-test:1.8.10'
+    testImplementation 'org.jetbrains.kotlin:kotlin-test:1.8.22'
     
     androidTestImplementation 'androidx.test.ext:junit:1.3.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.7.0'
