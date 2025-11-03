@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:label="masked-edittext-tests">
+        <activity
+            android:name="com.github.pinball83.maskededittext.TestHostActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar"/>
+    </application>
+</manifest>
