@@ -35,28 +35,15 @@ android {
 
     testOptions {
         unitTests.all {
-            // Разрешаем доступ к internal классам JDK 21
             jvmArgs += [
                     "--add-opens", "java.base/jdk.internal.reflect=ALL-UNNAMED"
             ]
-            // (по желанию) более информативные логи при падениях
             testLogging {
                 events "passed", "skipped", "failed"
             }
         }
     }
 
-//    testOptions {
-//        unitTests.all {
-//            jacoco.includeNoLocationClasses = true
-//            jvmArgs '--add-opens=java.base/java.lang=ALL-UNNAMED',
-//                    '--add-opens=java.base/java.nio=ALL-UNNAMED',
-//                    '--add-opens=java.base/java.net=ALL-UNNAMED',
-//                    '--add-opens=java.base/java.util=ALL-UNNAMED',
-//                    '--add-opens=java.base/java.io=ALL-UNNAMED'
-//        }
-//    }
-    
     buildTypes {
         release {
             minifyEnabled false
@@ -69,38 +56,6 @@ android {
     }
     namespace 'com.thrd.maskededittext'
 }
-
-// Kover is applied; default reports are available via:
-//  - :masked-edittext:koverHtmlReport (unit tests)
-//  - :masked-edittext:koverXmlReport
-// If you need custom filters, uncomment the block below once the plugin is fully resolved in your environment.
-// koverReport {
-//     filters {
-//         excludes {
-//             classes('**/R.class', '**/R$*.class', '**/BuildConfig.*', '**/Manifest*.*', '**/*Test*.*')
-//         }
-//     }
-// }
-
-// Helpful alias tasks in this module:
-// - :masked-edittext:koverHtmlReport (unit tests coverage report)
-// - :masked-edittext:koverXmlReport
-// Instrumentation coverage (Espresso) HTML report provided by AGP:
-// - :masked-edittext:createDebugAndroidTestCoverageReport
-
-// Ensure Gradle Test workers have required module opens on JDK 17+
-//tasks.withType(Test).configureEach {
-//    jvmArgs '--add-opens=java.base/java.lang=ALL-UNNAMED',
-//            '--add-opens=java.base/java.lang.invoke=ALL-UNNAMED',
-//            '--add-opens=java.base/java.util=ALL-UNNAMED',
-//            '--add-opens=java.base/java.io=ALL-UNNAMED',
-//            '--add-opens=java.base/jdk.internal.reflect=ALL-UNNAMED'
-//    // Optionally, to force Java 21 toolchain for tests, set -PforceJava21Toolchain
-//    if (project.hasProperty('forceJava21Toolchain')) {
-//        def toolchains = project.extensions.getByType(org.gradle.jvm.toolchain.JavaToolchainService)
-//        javaLauncher.set(toolchains.launcherFor { languageVersion = org.gradle.jvm.toolchain.JavaLanguageVersion.of(21) })
-//    }
-//}
 
 dependencies {
     // Kotlin
