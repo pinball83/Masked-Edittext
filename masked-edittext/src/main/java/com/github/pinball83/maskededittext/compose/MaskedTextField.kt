@@ -15,6 +15,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
 import com.github.pinball83.maskededittext.InputEvent
 
 /**
@@ -93,6 +95,11 @@ fun MaskedTextField(
     OutlinedTextField(
         value = state.textFieldValue,
         onValueChange = { newValue ->
+            // Ignore extraneous backspace when already empty to prevent mask artifact
+            if (state.unmaskedValue.isEmpty() && newValue.text.length < state.textFieldValue.text.length) {
+                onValueChange(state.unmaskedValue)
+                return@OutlinedTextField
+            }
             val previousValue = state.unmaskedValue
             state.updateValue(newValue)
             val event = when {
