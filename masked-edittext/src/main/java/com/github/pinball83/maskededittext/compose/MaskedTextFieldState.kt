@@ -75,24 +75,55 @@ class MaskedTextFieldState internal constructor(
 
     fun updateValue(newValue: TextFieldValue) {
         val previousRaw = rawUnmasked
+        val previousCaret = textFieldValue.selection.start
+        val previousLen = unmaskedValue.length
         val normalized = formatNormalized(newValue.text)
         rawUnmasked = computeRawFromNormalized(normalized)
         unmaskedValue = normalized
 
         val masked = formatter?.mask(normalized) ?: normalized
-        val cursorPos = formatter?.cursorForLength(normalized.length, masked.length) ?: masked.length
+        val cursorPos = formatter?.let { fmt ->
+            val defaultPos = fmt.cursorForLength(normalized.length, masked.length)
+            // Deletion-aware caret policy: if we deleted and previous caret was at the
+            // start of the next slot group, move back only one position to avoid
+            // jumping across literals (e.g., hyphens).
+            if (normalized.length < previousLen) {
+                val slots = fmt.validPositions
+                val prevWasNextSlotStart =
+                    (normalized.length + 1) in slots.indices &&
+                        previousCaret == slots[normalized.length + 1]
+                if (prevWasNextSlotStart) (previousCaret - 1).coerceAtLeast(0) else defaultPos
+            } else {
+                defaultPos
+            }
+        } ?: masked.length
         textFieldValue = newValue.copy(text = masked, selection = TextRange(cursorPos))
 
         stateMachine.processEvent(resolveEvent(previousRaw, rawUnmasked))
     }
 
     fun updateValue(newValue: String) {
+        val previousCaret = textFieldValue.selection.start
+        val previousLen = unmaskedValue.length
+
         val normalized = formatNormalized(newValue)
         rawUnmasked = normalized
         unmaskedValue = normalized
 
         val masked = formatter?.mask(normalized) ?: normalized
-        val cursorPos = formatter?.cursorForLength(normalized.length, masked.length) ?: masked.length
+        val cursorPos = formatter?.let { fmt ->
+            val defaultPos = fmt.cursorForLength(normalized.length, masked.length)
+            if (normalized.length < previousLen) {
+                val slots = fmt.validPositions
+                val prevWasNextSlotStart =
+                    (normalized.length + 1) in slots.indices &&
+                        previousCaret == slots[normalized.length + 1]
+                if (prevWasNextSlotStart) (previousCaret - 1).coerceAtLeast(0) else defaultPos
+            } else {
+                defaultPos
+            }
+        } ?: masked.length
+
         textFieldValue = TextFieldValue(masked, TextRange(cursorPos))
 
         stateMachine.processEvent(InputEvent.TEXT_SET)
