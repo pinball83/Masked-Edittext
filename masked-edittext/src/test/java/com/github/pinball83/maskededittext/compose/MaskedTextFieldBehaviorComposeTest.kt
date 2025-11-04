@@ -272,6 +272,28 @@ class MaskedTextFieldBehaviorComposeTest {
         assertEquals(expectedCaret, st.textFieldValue.selection.start)
     }
 
+    @Test
+    fun `ime typing after deletion fills next slot without artifacts`() {
+        val fmt = MaskFormatter("8 (***) *** **-**", '*')
+        val st = MaskedTextFieldState(
+            initialValue = "",
+            maskedOptions = MaskedOptions.phone(),
+            formatter = fmt
+        )
+
+        st.updateValue("1234567")
+        st.simulateImeBackspace()
+
+        // After deleting, typing a new digit should occupy the freed slot and preserve mask stability
+        st.simulateImeInput('9')
+
+        val normalized = fmt.normalize(st.unmaskedValue)
+        assertEquals("1234569", normalized)
+        assertEquals(fmt.mask(normalized), st.textFieldValue.text)
+        val expectedCaret = fmt.cursorPositionFor(normalized.length)
+        assertEquals(expectedCaret, st.textFieldValue.selection.start)
+    }
+
     private fun MaskedTextFieldState.simulateImeInput(char: Char) {
         val current = textFieldValue
         val caret = current.selection.start
