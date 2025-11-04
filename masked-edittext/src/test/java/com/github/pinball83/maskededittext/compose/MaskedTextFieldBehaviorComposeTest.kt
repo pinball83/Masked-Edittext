@@ -184,7 +184,7 @@ class MaskedTextFieldBehaviorComposeTest {
         // Replace middle logically: simulate change of unmasked to 1274
         st.updateValue("1274")
         // Caret remains at end of second group
-        assertEquals(fmt.validPositions[4], st.textFieldValue.selection.start)
+        assertEquals(fmt.cursorPositionFor(st.unmaskedValue.length), st.textFieldValue.selection.start)
     }
 
     @Test
@@ -196,10 +196,44 @@ class MaskedTextFieldBehaviorComposeTest {
             formatter = fmt
         )
         st.updateValue("1234")
-        val before = st.textFieldValue.selection.start
         st.updateValue("123")
-        val after = st.textFieldValue.selection.start
-        assertEquals(before - 1, after)
+        val expected = fmt.cursorPositionFor(st.unmaskedValue.length)
+        assertEquals(expected, st.textFieldValue.selection.start)
+    }
+
+    @Test
+    fun `ime backspace across literal moves caret to previous slot`() {
+        val fmt = MaskFormatter("**-**-**", '*')
+        val st = MaskedTextFieldState(
+            initialValue = "",
+            maskedOptions = MaskedOptions.custom("**-**-**"),
+            formatter = fmt
+        )
+
+        st.updateValue("1234")
+        st.simulateImeBackspace()
+
+        val expected = fmt.cursorPositionFor(st.unmaskedValue.length)
+        assertEquals(expected, st.textFieldValue.selection.start)
+        assertEquals("123", fmt.normalize(st.unmaskedValue))
+    }
+
+    @Test
+    fun `ime consecutive backspace skips multiple literals`() {
+        val fmt = MaskFormatter("**-**-**", '*')
+        val st = MaskedTextFieldState(
+            initialValue = "",
+            maskedOptions = MaskedOptions.custom("**-**-**"),
+            formatter = fmt
+        )
+
+        st.updateValue("12345")
+        st.simulateImeBackspace() // remove 5
+        st.simulateImeBackspace() // remove 4
+
+        val expected = fmt.cursorPositionFor(st.unmaskedValue.length)
+        assertEquals(expected, st.textFieldValue.selection.start)
+        assertEquals("123", fmt.normalize(st.unmaskedValue))
     }
 
     private fun MaskedTextFieldState.simulateImeInput(char: Char) {
@@ -213,5 +247,15 @@ class MaskedTextFieldBehaviorComposeTest {
         }
         val nextCaret = (caret + 1).coerceAtMost(buffer.length)
         updateValue(TextFieldValue(buffer.toString(), TextRange(nextCaret)))
+    }
+
+    private fun MaskedTextFieldState.simulateImeBackspace() {
+        val current = textFieldValue
+        val caret = current.selection.start
+        if (caret <= 0) return
+        val buffer = StringBuilder(current.text)
+        buffer.deleteCharAt(caret - 1)
+        val newCaret = (caret - 1).coerceAtLeast(0)
+        updateValue(TextFieldValue(buffer.toString(), TextRange(newCaret)))
     }
 }

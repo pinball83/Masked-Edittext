@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import com.github.pinball83.maskededittext.CursorPolicyController
 import com.github.pinball83.maskededittext.InputEvent
 import com.github.pinball83.maskededittext.InputState
 import com.github.pinball83.maskededittext.InputStateMachine
@@ -22,6 +23,8 @@ class MaskedTextFieldState internal constructor(
     private val maskedOptions: MaskedOptions,
     private val formatter: MaskFormatter?
 ) {
+
+    private val cursorController = CursorPolicyController()
 
     private fun MaskFormatter.cursorForLength(normalizedLength: Int, textLength: Int): Int {
         return when {
@@ -74,73 +77,125 @@ class MaskedTextFieldState internal constructor(
         get() = stateMachine.isEmpty()
 
     fun updateValue(newValue: TextFieldValue) {
+        val fmt = formatter
         val previousRaw = rawUnmasked
         val previousCaret = textFieldValue.selection.start
         val previousLen = unmaskedValue.length
-        val previousMasked = textFieldValue.text
-        val normalized = formatter?.let { fmt ->
-            fmt.normalize(fmt.unmask(newValue.text))
+
+        var normalized = fmt?.let { formatter ->
+            formatter.normalize(formatter.unmask(newValue.text))
         } ?: newValue.text
-        rawUnmasked = computeRawFromNormalized(normalized)
+        var coercedBackspace = false
+        if (fmt != null) {
+            val slots = fmt.validPositions
+            val isCollapsedSelection = newValue.selection.start == newValue.selection.end
+            val caretMovedBackward = newValue.selection.start < previousCaret
+            val sameUnmasked = normalized == unmaskedValue
+            val movedByOne = previousCaret - newValue.selection.start == 1
+            val landedOnLiteral = newValue.selection.start >= 0 && !slots.contains(newValue.selection.start)
+            if (isCollapsedSelection && caretMovedBackward && movedByOne && landedOnLiteral && sameUnmasked && normalized.isNotEmpty()) {
+                val prevSlotPosition = slots.lastOrNull { it < previousCaret }
+                val slotIndex = prevSlotPosition?.let { slots.indexOf(it) } ?: -1
+                if (slotIndex in normalized.indices) {
+                    val builder = StringBuilder(normalized)
+                    builder.deleteCharAt(slotIndex)
+                    normalized = fmt.normalize(builder)
+                    coercedBackspace = true
+                }
+            }
+        }
+        val newRaw = computeRawFromNormalized(normalized)
+        val textChanged = newRaw != previousRaw
+
+        rawUnmasked = newRaw
         unmaskedValue = normalized
 
-        val masked = formatter?.mask(normalized) ?: normalized
-        val cursorPos = formatter?.let { fmt ->
-            val maskedLength = masked.length
-            val defaultPos = fmt.cursorForLength(normalized.length, maskedLength)
-            val textChanged = masked != previousMasked
-            val selectionChanged = newValue.selection != textFieldValue.selection
-            // Deletion-aware caret policy: if we deleted and previous caret was at the
-            // start of the next slot group, move back only one position to avoid
-            // jumping across literals (e.g., hyphens).
-            if (normalized.length < previousLen) {
-                val slots = fmt.validPositions
-                val prevWasNextSlotStart =
-                    (normalized.length + 1) in slots.indices &&
-                        previousCaret == slots[normalized.length + 1]
-                val fallback = defaultPos.coerceIn(0, maskedLength)
-                if (prevWasNextSlotStart) (previousCaret - 1).coerceAtLeast(0) else fallback
-            } else if (textChanged) {
-                defaultPos
-            } else if (selectionChanged) {
-                desiredSelectionFor(fmt, newValue.selection, maskedLength)
-            } else {
-                newValue.selection.start.coerceIn(0, maskedLength)
-            }
-        } ?: newValue.selection.start.coerceIn(0, masked.length)
-        textFieldValue = newValue.copy(text = masked, selection = TextRange(cursorPos))
+        val masked = fmt?.mask(normalized) ?: normalized
+        val maskedLength = masked.length
 
-        if (rawUnmasked != previousRaw) {
-            stateMachine.processEvent(resolveEvent(previousRaw, rawUnmasked))
+        val event = if (textChanged) resolveEvent(previousRaw, newRaw) else null
+
+        var caret = newValue.selection.start.coerceIn(0, maskedLength)
+
+        if (fmt != null) {
+            val slots = fmt.validPositions
+            when {
+                (event == InputEvent.CHARACTER_DELETED || coercedBackspace) && normalized.length <= previousLen -> {
+                    caret = cursorController.focusTarget(fmt, normalized, maskedLength)
+                }
+                event == InputEvent.CHARACTER_TYPED || event == InputEvent.TEXT_PASTED -> {
+                    caret = cursorController.focusTarget(fmt, normalized, maskedLength)
+                }
+                event == InputEvent.TEXT_SET && textChanged -> {
+                    caret = cursorController.focusTarget(fmt, normalized, maskedLength)
+                }
+                !textChanged -> {
+                    cursorController.selectionCorrection(
+                        selStart = newValue.selection.start,
+                        selEnd = newValue.selection.end,
+                        textLength = maskedLength,
+                        formatter = fmt,
+                        stateMachine = stateMachine,
+                        pendingEvent = null,
+                        lastEvent = stateMachine.getLastEvent()
+                    )?.let { caret = it }
+                }
+                else -> {
+                    caret = fmt.cursorForLength(normalized.length, maskedLength)
+                }
+            }
+
+            val trailing = ((slots.lastOrNull() ?: -1) + 1).coerceAtMost(maskedLength)
+            caret = caret.coerceIn(0, trailing)
+
+            if (event == null && newValue.selection.start == newValue.selection.end && caret < trailing && !slots.contains(caret)) {
+                val adjusted = stateMachine.caretPolicyFor(
+                    stateMachine.getLastEvent(),
+                    caret,
+                    maskedLength,
+                    slots,
+                    fmt.firstValidPosition()
+                )
+                caret = adjusted.coerceIn(0, trailing)
+            }
         }
+
+        textFieldValue = newValue.copy(text = masked, selection = TextRange(caret))
+
+        event?.let { stateMachine.processEvent(it) }
     }
 
     fun updateValue(newValue: String) {
+        val fmt = formatter
         val previousRaw = rawUnmasked
         val previousCaret = textFieldValue.selection.start
         val previousLen = unmaskedValue.length
 
         val normalized = formatNormalized(newValue)
-        rawUnmasked = normalized
+        val newRaw = computeRawFromNormalized(normalized)
+        val textChanged = newRaw != previousRaw
+
+        rawUnmasked = newRaw
         unmaskedValue = normalized
 
-        val masked = formatter?.mask(normalized) ?: normalized
-        val cursorPos = formatter?.let { fmt ->
-            val defaultPos = fmt.cursorForLength(normalized.length, masked.length)
-            if (normalized.length < previousLen) {
-                val slots = fmt.validPositions
-                val prevWasNextSlotStart =
-                    (normalized.length + 1) in slots.indices &&
-                        previousCaret == slots[normalized.length + 1]
-                if (prevWasNextSlotStart) (previousCaret - 1).coerceAtLeast(0) else defaultPos
+        val masked = fmt?.mask(normalized) ?: normalized
+        val maskedLength = masked.length
+
+        var caret = textFieldValue.selection.start.coerceIn(0, maskedLength)
+
+        if (fmt != null && textChanged) {
+            caret = if (normalized.length < previousLen) {
+                cursorController.focusTarget(fmt, normalized, maskedLength)
             } else {
-                defaultPos
+                cursorController.focusTarget(fmt, normalized, maskedLength)
             }
-        } ?: masked.length
+        } else if (fmt == null && textChanged) {
+            caret = maskedLength
+        }
 
-        textFieldValue = TextFieldValue(masked, TextRange(cursorPos))
+        textFieldValue = TextFieldValue(masked, TextRange(caret.coerceIn(0, maskedLength)))
 
-        if (rawUnmasked != previousRaw) {
+        if (textChanged) {
             stateMachine.processEvent(InputEvent.TEXT_SET)
         }
     }
@@ -188,31 +243,6 @@ class MaskedTextFieldState internal constructor(
         val normalizedLength = formatter?.normalize(unmasked)?.length ?: masked.length
         val cursorPos = formatter?.cursorForLength(normalizedLength, masked.length) ?: masked.length
         return TextFieldValue(masked, TextRange(cursorPos))
-    }
-
-    private fun desiredSelectionFor(
-        formatter: MaskFormatter,
-        selection: TextRange,
-        textLength: Int
-    ): Int {
-        val desired = selection.start.coerceIn(0, textLength)
-        val slots = formatter.validPositions
-        if (slots.isEmpty()) {
-            return desired
-        }
-        val trailing = ((formatter.lastValidPosition() ?: -1) + 1).coerceAtMost(textLength)
-        if (desired >= trailing) {
-            return trailing
-        }
-        if (slots.contains(desired)) {
-            return desired
-        }
-        val nearest = formatter.nearestValidPosition(desired)
-        return if (nearest == slots.last() && desired > nearest && trailing > nearest) {
-            trailing
-        } else {
-            nearest.coerceIn(0, textLength)
-        }
     }
 
     private fun resolveEvent(previousRaw: String, newRaw: String): InputEvent {
