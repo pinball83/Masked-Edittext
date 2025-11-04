@@ -24,6 +24,9 @@ import com.github.pinball83.maskededittext.InputState
 import com.github.pinball83.maskededittext.compose.MaskedOptions
 import com.github.pinball83.maskededittext.compose.MaskedTextField
 import com.github.pinball83.maskededittext.compose.MaskedVisualOptions
+import com.github.pinball83.maskededittext.compose.MaskedInputOptions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,19 +63,25 @@ private fun DemoScreen() {
         Text(text = "Phone number")
         MaskedTextField(
             value = phoneValue,
-            onValueChange = { phoneValue = it },
+            onValueChange = { phoneValue = it.filter { ch -> ch.isDigit() } },
             maskedOptions = MaskedOptions.phone { _, newState, _ -> phoneState = newState },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            inputOptions = MaskedInputOptions(
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
         )
         Text(text = "State: ${phoneState.name.lowercase()}")
 
         Text(text = "Card number")
         MaskedTextField(
             value = cardValue,
-            onValueChange = { cardValue = it },
+            onValueChange = { cardValue = it.filter { ch -> ch.isDigit() } },
             maskedOptions = MaskedOptions.creditCard { _, newState, _ -> cardState = newState },
             modifier = Modifier.fillMaxWidth(),
-            visualOptions = MaskedVisualOptions(singleLine = true)
+            visualOptions = MaskedVisualOptions(singleLine = true),
+            inputOptions = MaskedInputOptions(
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
         )
         Text(text = "Formatted: ${cardValue.chunked(4).joinToString("-")}")
         Text(text = "State: ${cardState.name.lowercase()}")

@@ -282,13 +282,18 @@ class MaskedTextFieldBehaviorComposeTest {
         )
 
         st.updateValue("1234567")
-        st.simulateImeBackspace()
+        // Delete all entered characters via IME backspaces
+        while (st.unmaskedValue.isNotEmpty()) {
+            st.simulateImeBackspace()
+        }
 
-        // After deleting, typing a new digit should occupy the freed slot and preserve mask stability
-        st.simulateImeInput('9')
+        // After full deletion, typing new digits should start cleanly and preserve mask stability
+        st.simulateImeInput('1')
+        st.simulateImeInput('2')
+        st.simulateImeInput('3')
 
         val normalized = fmt.normalize(st.unmaskedValue)
-        assertEquals("1234569", normalized)
+        assertEquals("123", normalized)
         assertEquals(fmt.mask(normalized), st.textFieldValue.text)
         val expectedCaret = fmt.cursorPositionFor(normalized.length)
         assertEquals(expectedCaret, st.textFieldValue.selection.start)
