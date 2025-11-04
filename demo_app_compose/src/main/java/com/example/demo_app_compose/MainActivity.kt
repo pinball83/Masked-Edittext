@@ -49,6 +49,9 @@ private fun DemoScreen() {
     var cardValue by remember { mutableStateOf("4111111111111111") }
     var cardState by remember { mutableStateOf(InputState.EMPTY) }
 
+    var textValue by remember { mutableStateOf("") }
+    var textState by remember { mutableStateOf(InputState.EMPTY) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -85,5 +88,18 @@ private fun DemoScreen() {
         )
         Text(text = "Formatted: ${cardValue.chunked(4).joinToString("-")}")
         Text(text = "State: ${cardState.name.lowercase()}")
+
+        Text(text = "Masked text (letters only)")
+        MaskedTextField(
+            value = textValue,
+            onValueChange = { textValue = it.filter { ch -> ch.isLetter() } },
+            maskedOptions = MaskedOptions.custom(mask = "***-***") { _, newState, _ -> textState = newState },
+            modifier = Modifier.fillMaxWidth(),
+            visualOptions = MaskedVisualOptions(singleLine = true),
+            inputOptions = MaskedInputOptions(
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
+            )
+        )
+        Text(text = "State: ${textState.name.lowercase()}")
     }
 }
