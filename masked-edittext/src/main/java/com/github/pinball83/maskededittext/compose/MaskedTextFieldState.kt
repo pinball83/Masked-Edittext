@@ -77,13 +77,19 @@ class MaskedTextFieldState internal constructor(
         val previousRaw = rawUnmasked
         val previousCaret = textFieldValue.selection.start
         val previousLen = unmaskedValue.length
-        val normalized = formatNormalized(newValue.text)
+        val previousMasked = textFieldValue.text
+        val normalized = formatter?.let { fmt ->
+            fmt.normalize(fmt.unmask(newValue.text))
+        } ?: newValue.text
         rawUnmasked = computeRawFromNormalized(normalized)
         unmaskedValue = normalized
 
         val masked = formatter?.mask(normalized) ?: normalized
         val cursorPos = formatter?.let { fmt ->
-            val defaultPos = fmt.cursorForLength(normalized.length, masked.length)
+            val maskedLength = masked.length
+            val defaultPos = fmt.cursorForLength(normalized.length, maskedLength)
+            val textChanged = masked != previousMasked
+            val selectionChanged = newValue.selection != textFieldValue.selection
             // Deletion-aware caret policy: if we deleted and previous caret was at the
             // start of the next slot group, move back only one position to avoid
             // jumping across literals (e.g., hyphens).
@@ -92,17 +98,25 @@ class MaskedTextFieldState internal constructor(
                 val prevWasNextSlotStart =
                     (normalized.length + 1) in slots.indices &&
                         previousCaret == slots[normalized.length + 1]
-                if (prevWasNextSlotStart) (previousCaret - 1).coerceAtLeast(0) else defaultPos
-            } else {
+                val fallback = defaultPos.coerceIn(0, maskedLength)
+                if (prevWasNextSlotStart) (previousCaret - 1).coerceAtLeast(0) else fallback
+            } else if (textChanged) {
                 defaultPos
+            } else if (selectionChanged) {
+                desiredSelectionFor(fmt, newValue.selection, maskedLength)
+            } else {
+                newValue.selection.start.coerceIn(0, maskedLength)
             }
-        } ?: masked.length
+        } ?: newValue.selection.start.coerceIn(0, masked.length)
         textFieldValue = newValue.copy(text = masked, selection = TextRange(cursorPos))
 
-        stateMachine.processEvent(resolveEvent(previousRaw, rawUnmasked))
+        if (rawUnmasked != previousRaw) {
+            stateMachine.processEvent(resolveEvent(previousRaw, rawUnmasked))
+        }
     }
 
     fun updateValue(newValue: String) {
+        val previousRaw = rawUnmasked
         val previousCaret = textFieldValue.selection.start
         val previousLen = unmaskedValue.length
 
@@ -126,7 +140,9 @@ class MaskedTextFieldState internal constructor(
 
         textFieldValue = TextFieldValue(masked, TextRange(cursorPos))
 
-        stateMachine.processEvent(InputEvent.TEXT_SET)
+        if (rawUnmasked != previousRaw) {
+            stateMachine.processEvent(InputEvent.TEXT_SET)
+        }
     }
 
     fun onFocusChanged(focused: Boolean) {
@@ -172,6 +188,31 @@ class MaskedTextFieldState internal constructor(
         val normalizedLength = formatter?.normalize(unmasked)?.length ?: masked.length
         val cursorPos = formatter?.cursorForLength(normalizedLength, masked.length) ?: masked.length
         return TextFieldValue(masked, TextRange(cursorPos))
+    }
+
+    private fun desiredSelectionFor(
+        formatter: MaskFormatter,
+        selection: TextRange,
+        textLength: Int
+    ): Int {
+        val desired = selection.start.coerceIn(0, textLength)
+        val slots = formatter.validPositions
+        if (slots.isEmpty()) {
+            return desired
+        }
+        val trailing = ((formatter.lastValidPosition() ?: -1) + 1).coerceAtMost(textLength)
+        if (desired >= trailing) {
+            return trailing
+        }
+        if (slots.contains(desired)) {
+            return desired
+        }
+        val nearest = formatter.nearestValidPosition(desired)
+        return if (nearest == slots.last() && desired > nearest && trailing > nearest) {
+            trailing
+        } else {
+            nearest.coerceIn(0, textLength)
+        }
     }
 
     private fun resolveEvent(previousRaw: String, newRaw: String): InputEvent {

@@ -1,5 +1,7 @@
 package com.github.pinball83.maskededittext.compose
 
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import com.github.pinball83.maskededittext.InputEvent
 import com.github.pinball83.maskededittext.InputState
 import com.github.pinball83.maskededittext.MaskFormatter
@@ -91,6 +93,43 @@ class MaskedTextFieldBehaviorComposeTest {
     }
 
     @Test
+    fun `text field value typing crosses literal boundaries`() {
+        val fmt = MaskFormatter("**-**-**", '*')
+        val st = MaskedTextFieldState(
+            initialValue = "",
+            maskedOptions = MaskedOptions.custom("**-**-**"),
+            formatter = fmt
+        )
+
+        st.simulateImeInput('1')
+        assertEquals(fmt.validPositions[1], st.textFieldValue.selection.start)
+
+        st.simulateImeInput('2')
+        assertEquals(fmt.validPositions[2], st.textFieldValue.selection.start)
+
+        st.simulateImeInput('3')
+        assertEquals(fmt.validPositions[3], st.textFieldValue.selection.start)
+    }
+
+    @Test
+    fun `manual caret move over literal snaps forward`() {
+        val fmt = MaskFormatter("**-**-**", '*')
+        val st = MaskedTextFieldState(
+            initialValue = "",
+            maskedOptions = MaskedOptions.custom("**-**-**"),
+            formatter = fmt
+        )
+
+        st.updateValue("1234")
+        val literalIndex = st.textFieldValue.text.indexOf('-')
+        require(literalIndex >= 0)
+
+        st.updateValue(TextFieldValue(st.textFieldValue.text, TextRange(literalIndex)))
+
+        assertEquals(fmt.validPositions[2], st.textFieldValue.selection.start)
+    }
+
+    @Test
     fun `delete across literal moves caret correctly`() {
         val hyphenFormatter = MaskFormatter(
             maskPattern = "**-**-**",
@@ -161,5 +200,18 @@ class MaskedTextFieldBehaviorComposeTest {
         st.updateValue("123")
         val after = st.textFieldValue.selection.start
         assertEquals(before - 1, after)
+    }
+
+    private fun MaskedTextFieldState.simulateImeInput(char: Char) {
+        val current = textFieldValue
+        val caret = current.selection.start
+        val buffer = StringBuilder(current.text)
+        if (caret in 0 until buffer.length) {
+            buffer.setCharAt(caret, char)
+        } else {
+            buffer.append(char)
+        }
+        val nextCaret = (caret + 1).coerceAtMost(buffer.length)
+        updateValue(TextFieldValue(buffer.toString(), TextRange(nextCaret)))
     }
 }
