@@ -4,7 +4,11 @@ import android.os.Bundle
 import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePaddingRelative
 import com.example.demo_app.databinding.ActivityMainBinding
 import com.github.pinball83.maskededittext.InputEvent
 import com.github.pinball83.maskededittext.InputState
@@ -18,11 +22,32 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        applyEdgeToEdgeInsets()
         setupPhoneSample()
         setupCardSample()
         setupDynamicSample(binding.dynamicHost)
+    }
+
+    private fun applyEdgeToEdgeInsets() {
+        val initialPaddingStart = binding.root.paddingStart
+        val initialPaddingTop = binding.root.paddingTop
+        val initialPaddingEnd = binding.root.paddingEnd
+        val initialPaddingBottom = binding.root.paddingBottom
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
+            val systemInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.updatePaddingRelative(
+                start = initialPaddingStart + systemInsets.left,
+                top = initialPaddingTop + systemInsets.top,
+                end = initialPaddingEnd + systemInsets.right,
+                bottom = initialPaddingBottom + systemInsets.bottom
+            )
+            WindowInsetsCompat.CONSUMED
+        }
+        ViewCompat.requestApplyInsets(binding.root)
     }
 
     private fun setupPhoneSample() {
