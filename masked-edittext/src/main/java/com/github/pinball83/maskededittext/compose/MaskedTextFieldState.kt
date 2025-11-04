@@ -90,18 +90,24 @@ class MaskedTextFieldState internal constructor(
             val slots = fmt.validPositions
             val isCollapsedSelection = newValue.selection.start == newValue.selection.end
             val caretMovedBackward = newValue.selection.start < previousCaret
-            val sameUnmasked = normalized == unmaskedValue
-            val movedByOne = previousCaret - newValue.selection.start == 1
-            val landedOnLiteral = newValue.selection.start >= 0 && !slots.contains(newValue.selection.start)
-            if (isCollapsedSelection && caretMovedBackward && movedByOne && landedOnLiteral && sameUnmasked && normalized.isNotEmpty()) {
-                val prevSlotPosition = slots.lastOrNull { it < previousCaret }
-                val slotIndex = prevSlotPosition?.let { slots.indexOf(it) } ?: -1
-                if (slotIndex in normalized.indices) {
-                    val builder = StringBuilder(normalized)
-                    builder.deleteCharAt(slotIndex)
-                    normalized = fmt.normalize(builder)
-                    coercedBackspace = true
+            val maskedChanged = newValue.text != textFieldValue.text
+            val prevMasked = textFieldValue.text
+            val deletedIndex = previousCaret - 1
+            val deletedOnSlot = deletedIndex >= 0 && slots.contains(deletedIndex)
+            val deletedWasBlankSlot = deletedOnSlot && deletedIndex < prevMasked.length && prevMasked[deletedIndex] == ' '
+            val deletedLiteral = previousCaret > 0 && (!deletedOnSlot || deletedWasBlankSlot)
+            val prevSlotPosition = slots.lastOrNull { it < previousCaret }
+            val slotIndex = prevSlotPosition?.let { slots.indexOf(it) } ?: -1
+            val shouldCoerce = isCollapsedSelection && caretMovedBackward && maskedChanged && slotIndex >= 0 &&
+                (deletedLiteral || normalized.length >= previousLen)
+
+            if (shouldCoerce) {
+                val base = StringBuilder(unmaskedValue)
+                if (slotIndex in base.indices) {
+                    base.deleteCharAt(slotIndex)
                 }
+                normalized = fmt.normalize(base)
+                coercedBackspace = true
             }
         }
         val newRaw = computeRawFromNormalized(normalized)

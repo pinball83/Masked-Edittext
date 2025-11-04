@@ -603,6 +603,26 @@ class MaskedEditText @JvmOverloads constructor(
                 // Rely on key events by default; some IMEs use deleteSurroundingText only,
                 // but we prioritize correctness in tests and common keyboards. We'll revisit if needed.
 
+                override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean {
+                    val formatter = maskFormatter
+                    if (formatter != null && selectionStart == selectionEnd) {
+                        val textLen = this@MaskedEditText.text?.length ?: 0
+                        val caret = selectionStart
+                        // Backspace behavior: delete the previous slot value, not the literal
+                        if (beforeLength > 0 && afterLength == 0) {
+                            val newCaret = cursorController.beforeBackspaceReposition(caret, textLen, formatter)
+                            if (newCaret != caret) setSelectionSafely(newCaret)
+                        }
+                        // Forward delete: if caret is on a literal, advance to the next slot
+                        else if (afterLength > 0 && beforeLength == 0) {
+                            val nextSlot = formatter.validPositions.firstOrNull { it >= caret }
+                            if (nextSlot != null && nextSlot != caret) setSelectionSafely(nextSlot)
+                        }
+                    }
+                    this@MaskedEditText.lastEvent = InputEvent.CHARACTER_DELETED
+                    return super.deleteSurroundingText(beforeLength, afterLength)
+                }
+
                 override fun sendKeyEvent(event: KeyEvent): Boolean {
                     // Some IMEs send explicit DEL key events; mirror backspace behavior
                     if (event.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_DEL) {
