@@ -65,17 +65,15 @@ jobs:
       - name: Lint
         run: ./gradlew --stacktrace --build-cache lint
 
-      - name: Publish lint results to PR (reviewdog)
+      - name: Publish lint results to PR (android-lint)
         if: >-
           always() &&
           github.event_name == 'pull_request' &&
           github.event.pull_request.head.repo.full_name == github.repository
-        uses: reviewdog/action-android-lint@v1
+        uses: dvdandroid/action-android-lint@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-check
-          level: warning
-          filter_mode: added
 
       - name: Publish lint reports
         if: always()
