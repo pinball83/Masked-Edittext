@@ -8,6 +8,5 @@
     <string name="dynamic_label">Dynamically created view</string>
     <string name="state_placeholder">State: waiting for input</string>
     <string name="state_template">State: %1$s (%2$s)</string>
-    <string name="formatted_template">Formatted: %1$s</string>
     <string name="icon_toast">Icon tapped with value %1$s</string>
 </resources>
