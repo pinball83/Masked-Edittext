@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ '**' ]
+    branches: ["**"]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -20,11 +20,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Java 21
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "17"
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
