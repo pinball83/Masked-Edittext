@@ -76,32 +76,50 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          REPORT_XML="masked-edittext/build/reports/kover/xml/report.xml"
-          if [[ -f "$REPORT_XML" ]]; then
-            python3 - << 'PY'
-import xml.etree.ElementTree as ET
-import os
-path = os.environ.get('REPORT_XML', 'masked-edittext/build/reports/kover/xml/report.xml')
-tree = ET.parse(path)
-root = tree.getroot()
-line = next((c for c in root.findall('counter') if c.get('type')=='LINE'), None)
-inst = next((c for c in root.findall('counter') if c.get('type')=='INSTRUCTION'), None)
-def pct(counter):
-    if counter is None: return None
-    missed = int(counter.get('missed', '0'))
-    covered = int(counter.get('covered', '0'))
-    total = missed + covered
-    return (covered * 100.0 / total) if total else 0.0
-lines = pct(line)
-instructions = pct(inst)
-summary = []
-if lines is not None:
-    summary.append(f"Line coverage: {lines:.2f}%")
-if instructions is not None:
-    summary.append(f"Instruction coverage: {instructions:.2f}%")
-print("\n".join(summary) or "No coverage counters found.")
-PY
-          else
-            echo "Coverage report not found at $REPORT_XML"
-          fi >> "$GITHUB_STEP_SUMMARY"
-
+          SUMMARY_FILE="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
+          report_candidates=(
+            "masked-edittext/build/reports/kover/xml/report.xml"
+            "masked-edittext/build/reports/kover/report.xml"
+            "masked-edittext/build/reports/kover/xmlDebug/report.xml"
+            "masked-edittext/build/reports/kover/xmlRelease/report.xml"
+          )
+          REPORT_XML=""
+          for candidate in "${report_candidates[@]}"; do
+            if [[ -f "$candidate" ]]; then
+              REPORT_XML="$candidate"
+              break
+            fi
+          done
+          if [[ -n "$REPORT_XML" ]]; then
+            REPORT_XML="$REPORT_XML" python3 - << 'PY'
+          import xml.etree.ElementTree as ET
+          import os
+          import sys
+          path = os.environ["REPORT_XML"]
+          try:
+              tree = ET.parse(path)
+          except Exception as exc:
+              print(f"Failed to parse coverage report at {path}: {exc}")
+              sys.exit(0)
+          root = tree.getroot()
+          line = next((c for c in root.findall('counter') if c.get('type')=='LINE'), None)
+          inst = next((c for c in root.findall('counter') if c.get('type')=='INSTRUCTION'), None)
+          def pct(counter):
+              if counter is None: return None
+              missed = int(counter.get('missed', '0'))
+              covered = int(counter.get('covered', '0'))
+              total = missed + covered
+              return (covered * 100.0 / total) if total else 0.0
+          lines = pct(line)
+          instructions = pct(inst)
+          summary = []
+          if lines is not None:
+              summary.append(f"Line coverage: {lines:.2f}%")
+          if instructions is not None:
+              summary.append(f"Instruction coverage: {instructions:.2f}%")
+          print("\n".join(summary) or f"No coverage counters found in {path}.")
+          PY
+                    else
+                      echo "Coverage report not found. Checked:"
+                      printf '%s\n' "${report_candidates[@]}"
+                    fi >> "$SUMMARY_FILE"
