@@ -99,13 +99,24 @@ jobs:
           lines = ["## Lint summary", ""]
           for report in sorted(reports):
               text = report.read_text(errors="ignore")
-              match = re.search(r"(\\d+)\\s+errors?,\\s+(\\d+)\\s+warnings?", text)
-              if match:
-                  errors = int(match.group(1))
-                  warnings = int(match.group(2))
+              summary = re.search(r"(\d+)\s+errors?,\s+(\d+)\s+warnings?", text, re.IGNORECASE)
+              if not summary:
+                  summary = re.search(r"Lint found\s+(\d+)\s+errors?\s+and\s+(\d+)\s+warnings?", text, re.IGNORECASE)
+              if summary:
+                  errors = int(summary.group(1))
+                  warnings = int(summary.group(2))
                   lines.append(f"- {module_name(report)}: {errors} error(s), {warnings} warning(s)")
               else:
-                  lines.append(f"- {module_name(report)}: summary unavailable (`{report}`)")
+                  errors_matches = re.findall(r"(\d+)\s+errors?", text, re.IGNORECASE)
+                  warnings_matches = re.findall(r"(\d+)\s+warnings?", text, re.IGNORECASE)
+                  if errors_matches and warnings_matches:
+                      errors = int(errors_matches[-1])
+                      warnings = int(warnings_matches[-1])
+                      lines.append(f"- {module_name(report)}: {errors} error(s), {warnings} warning(s)")
+                  elif not text.strip():
+                      lines.append(f"- {module_name(report)}: 0 error(s), 0 warning(s)")
+                  else:
+                      lines.append(f"- {module_name(report)}: summary unavailable (`{report}`)")
           lines.append("")
           lines.append("Full reports are available in the lint artifact.")
           pathlib.Path("lint-summary/summary.md").write_text("\\n".join(lines))
