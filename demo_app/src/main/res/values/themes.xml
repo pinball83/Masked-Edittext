@@ -1,11 +1,24 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="Base.Theme.MaskedEdittext" parent="Theme.Material3.DayNight.NoActionBar">
+    <style
+        name="Base.Theme.MaskedEdittext"
+        parent="Theme.Material3.DayNight.NoActionBar"
+    >
         <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:enforceStatusBarContrast">false</item>
-        <item name="android:enforceNavigationBarContrast">false</item>
+        <item
+            name="android:navigationBarColor"
+        >@android:color/transparent</item>
+        <item
+            name="android:enforceStatusBarContrast"
+            tools:targetApi="29"
+        >false</item>
+        <item
+            name="android:enforceNavigationBarContrast"
+            tools:targetApi="29"
+        >false</item>
     </style>
 
-    <style name="Theme.MaskedEdittext" parent="Base.Theme.MaskedEdittext" />
+    <style name="Theme.MaskedEdittext" parent="Base.Theme.MaskedEdittext">
+        <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
+    </style>
 </resources>
