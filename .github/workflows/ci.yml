@@ -65,14 +65,40 @@ jobs:
       - name: Lint
         run: ./gradlew --stacktrace --build-cache lint
 
-      - name: Publish lint results to PR (android-lint)
+      - name: Publish lint results to PR (masked-edittext)
         if: >-
           always() &&
           github.event_name == 'pull_request' &&
-          github.event.pull_request.head.repo.full_name == github.repository
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          hashFiles('masked-edittext/build/reports/lint-results-debug.xml') != ''
         uses: dvdandroid/action-android-lint@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          lint_xml_file: masked-edittext/build/reports/lint-results-debug.xml
+          reporter: github-pr-check
+
+      - name: Publish lint results to PR (demo_app)
+        if: >-
+          always() &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          hashFiles('demo_app/build/reports/lint-results-debug.xml') != ''
+        uses: dvdandroid/action-android-lint@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          lint_xml_file: demo_app/build/reports/lint-results-debug.xml
+          reporter: github-pr-check
+
+      - name: Publish lint results to PR (demo_app_compose)
+        if: >-
+          always() &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          hashFiles('demo_app_compose/build/reports/lint-results-debug.xml') != ''
+        uses: dvdandroid/action-android-lint@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          lint_xml_file: demo_app_compose/build/reports/lint-results-debug.xml
           reporter: github-pr-check
 
       - name: Publish lint reports
