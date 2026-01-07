@@ -5,7 +5,7 @@ apply plugin: 'org.jetbrains.kotlinx.kover'
 apply plugin: 'maven-publish'
 apply plugin: 'signing'
 
-version = '2.2.0'
+version = (findProperty('VERSION') ?: findProperty('version') ?: '2.2.0').toString()
 group = (findProperty('GROUP') ?: 'io.github.pinball83').toString()
 
 android {
