@@ -20,6 +20,7 @@ jobs:
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
     permissions:
       contents: read
+      checks: write
       pull-requests: write
 
     steps:
@@ -64,84 +65,27 @@ jobs:
       - name: Lint
         run: ./gradlew --stacktrace --build-cache lint
 
-      - name: Collect lint reports
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p lint-summary
-          report_paths=$(find . -type f -path "*/build/intermediates/lint_intermediate_text_report/*/lintReport*/lint-results-*.txt")
-          if [[ -z "$report_paths" ]]; then
-            echo "## Lint summary" > lint-summary/summary.md
-            echo "" >> lint-summary/summary.md
-            echo "- No lint reports found." >> lint-summary/summary.md
-            exit 0
-          fi
-          python3 - << 'PY'
-          import os
-          import pathlib
-          import re
-          reports = [
-              pathlib.Path(path)
-              for path in os.popen(
-                  "find . -type f -path "
-                  "'*/build/intermediates/lint_intermediate_text_report/*/lintReport*/lint-results-*.txt'"
-              ).read().splitlines()
-              if path
-          ]
-          def module_name(path: pathlib.Path) -> str:
-              parts = list(path.parts)
-              if "build" in parts:
-                  idx = parts.index("build")
-                  if idx > 0:
-                      return parts[idx - 1]
-              return path.parent.name
-          lines = ["## Lint summary", ""]
-          for report in sorted(reports):
-              text = report.read_text(errors="ignore")
-              summary = re.search(r"(\d+)\s+errors?,\s+(\d+)\s+warnings?", text, re.IGNORECASE)
-              if not summary:
-                  summary = re.search(r"Lint found\s+(\d+)\s+errors?\s+and\s+(\d+)\s+warnings?", text, re.IGNORECASE)
-              if summary:
-                  errors = int(summary.group(1))
-                  warnings = int(summary.group(2))
-                  lines.append(f"- {module_name(report)}: {errors} error(s), {warnings} warning(s)")
-              else:
-                  errors_matches = re.findall(r"(\d+)\s+errors?", text, re.IGNORECASE)
-                  warnings_matches = re.findall(r"(\d+)\s+warnings?", text, re.IGNORECASE)
-                  if errors_matches and warnings_matches:
-                      errors = int(errors_matches[-1])
-                      warnings = int(warnings_matches[-1])
-                      lines.append(f"- {module_name(report)}: {errors} error(s), {warnings} warning(s)")
-                  elif not text.strip():
-                      lines.append(f"- {module_name(report)}: 0 error(s), 0 warning(s)")
-                  else:
-                      lines.append(f"- {module_name(report)}: summary unavailable (`{report}`)")
-          lines.append("")
-          lines.append("Full reports are available in the lint artifact.")
-          pathlib.Path("lint-summary/summary.md").write_text("\\n".join(lines))
-          PY
-          while IFS= read -r path; do
-            cp --parents "$path" lint-summary/
-          done <<< "$report_paths"
+      - name: Publish lint results to PR (reviewdog)
+        if: >-
+          always() &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        uses: reviewdog/action-android-lint@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-pr-check
+          level: warning
+          filter_mode: added
 
       - name: Publish lint reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: lint-reports
-          path: lint-summary/**
-
-      - name: Comment lint summary on PR
-        if: >-
-          always() &&
-          github.event_name == 'pull_request' &&
-          github.event.pull_request.head.repo.full_name == github.repository
-        uses: peter-evans/create-or-update-comment@v4
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body-file: lint-summary/summary.md
-          comment-identifier: lint-summary
+          path: |
+            **/build/reports/lint-results-*.html
+            **/build/reports/lint-results-*.xml
+            **/build/reports/lint-results-*.txt
 
       - name: Unit tests (all modules)
         run: ./gradlew --stacktrace --build-cache test
