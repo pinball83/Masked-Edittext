@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ '**' ]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-cover:
+    name: Lint, Test, Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept SDK licenses and install packages
+        shell: bash
+        run: |
+          sdkmanager --licenses <<<'y\ny\ny\ny\ny' > /dev/null
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;35.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Verify Gradle
+        run: ./gradlew --version
+
+      - name: Lint
+        run: ./gradlew --stacktrace lint
+
+      - name: Unit tests (all modules)
+        run: ./gradlew --stacktrace test
+
+      - name: Coverage (Kover) for library module
+        run: |
+          ./gradlew --stacktrace :masked-edittext:koverXmlReport :masked-edittext:koverHtmlReport
+
+      - name: Publish test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            **/build/reports/tests/**
+            **/build/test-results/**
+
+      - name: Publish coverage reports (Kover)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-kover
+          path: |
+            masked-edittext/build/reports/kover/**
+
+      - name: Coverage summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPORT_XML="masked-edittext/build/reports/kover/xml/report.xml"
+          if [[ -f "$REPORT_XML" ]]; then
+            python3 - << 'PY'
+import xml.etree.ElementTree as ET
+import os
+path = os.environ.get('REPORT_XML', 'masked-edittext/build/reports/kover/xml/report.xml')
+tree = ET.parse(path)
+root = tree.getroot()
+line = next((c for c in root.findall('counter') if c.get('type')=='LINE'), None)
+inst = next((c for c in root.findall('counter') if c.get('type')=='INSTRUCTION'), None)
+def pct(counter):
+    if counter is None: return None
+    missed = int(counter.get('missed', '0'))
+    covered = int(counter.get('covered', '0'))
+    total = missed + covered
+    return (covered * 100.0 / total) if total else 0.0
+lines = pct(line)
+instructions = pct(inst)
+summary = []
+if lines is not None:
+    summary.append(f"Line coverage: {lines:.2f}%")
+if instructions is not None:
+    summary.append(f"Instruction coverage: {instructions:.2f}%")
+print("\n".join(summary) or "No coverage counters found.")
+PY
+          else
+            echo "Coverage report not found at $REPORT_XML"
+          fi >> "$GITHUB_STEP_SUMMARY"
+

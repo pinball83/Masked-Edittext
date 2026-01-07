@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Masked EditText Demo</string>
+    <string name="demo_title">Masked input samples</string>
+    <string name="phone_label">Phone number (builder + attributes)</string>
+    <string name="phone_hint">8 (___) ___ __-__</string>
+    <string name="card_label">Card number (formatting example)</string>
+    <string name="card_hint">____ ____ ____ ____</string>
+    <string name="dynamic_label">Dynamically created view</string>
+    <string name="state_placeholder">State: waiting for input</string>
+    <string name="state_template">State: %1$s (%2$s)</string>
+    <string name="formatted_template">Formatted: %1$s</string>
+    <string name="icon_toast">Icon tapped with value %1$s</string>
+</resources>

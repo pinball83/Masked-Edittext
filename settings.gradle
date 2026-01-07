@@ -1,1 +1,4 @@
-include ':app', ':masked-edittext'
+include ':masked-edittext'
+include ':demo_app'
+include ':demo_app_compose'
+// Legacy :app module intentionally excluded; see app/README.md for deprecation context.
