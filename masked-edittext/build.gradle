@@ -2,8 +2,11 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'org.jetbrains.kotlin.plugin.compose'
 apply plugin: 'org.jetbrains.kotlinx.kover'
+apply plugin: 'maven-publish'
+apply plugin: 'signing'
 
 version = '2.2.0'
+group = (findProperty('GROUP') ?: 'io.github.pinball83').toString()
 
 android {
     compileSdkVersion 36
@@ -20,15 +23,15 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
-    
+
     buildFeatures {
         compose true
     }
-    
+
     composeOptions {
         kotlinCompilerExtensionVersion compose_compiler_version
     }
-    
+
     kotlinOptions {
         jvmTarget = '21'
     }
@@ -55,16 +58,79 @@ android {
         }
     }
     namespace 'com.thrd.maskededittext'
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
+}
+
+tasks.register('javadocJar', Jar) {
+    archiveClassifier.set('javadoc')
+}
+
+def signingKeyId = findProperty('signingKeyId')?.toString()
+def signingKey = findProperty('signingKey')?.toString()
+def signingPassword = findProperty('signingPassword')?.toString()
+
+publishing {
+    publications { }
+}
+
+signing {
+    // Publications are wired after project evaluation; key-less builds should still work (e.g., local dev).
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+                artifact(tasks.named('javadocJar'))
+
+                groupId = project.group.toString()
+                artifactId = (findProperty('POM_ARTIFACT_ID') ?: 'masked-edittext').toString()
+                version = project.version.toString()
+
+                pom {
+                    name = (findProperty('POM_NAME') ?: 'Masked-Edittext').toString()
+                    description = (findProperty('POM_DESCRIPTION') ?: 'Modern, Kotlin-first input masking for Android with both classic View and Jetpack Compose APIs.').toString()
+                    url = (findProperty('POM_URL') ?: 'https://github.com/pinball83/Masked-Edittext').toString()
+
+                    licenses {
+                        license {
+                            name = 'The Apache License, Version 2.0'
+                            url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
+
+                    scm {
+                        url = (findProperty('POM_SCM_URL') ?: 'https://github.com/pinball83/Masked-Edittext').toString()
+                        connection = (findProperty('POM_SCM_CONNECTION') ?: 'scm:git:https://github.com/pinball83/Masked-Edittext.git').toString()
+                        developerConnection = (findProperty('POM_SCM_DEV_CONNECTION') ?: 'scm:git:ssh://git@github.com/pinball83/Masked-Edittext.git').toString()
+                    }
+                }
+            }
+        }
+    }
+
+    if (signingKey != null && signingPassword != null) {
+        signing {
+            useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
+            sign(publishing.publications)
+        }
+    }
 }
 
 dependencies {
     // Kotlin
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    
+
     // AndroidX
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'androidx.core:core-ktx:1.17.0'
-    
+
     // Jetpack Compose
     implementation platform('androidx.compose:compose-bom:2025.09.01')
     implementation 'androidx.compose.ui:ui'
@@ -81,11 +147,11 @@ dependencies {
     testImplementation 'org.hamcrest:hamcrest-library:3.0'
     testImplementation "androidx.compose.ui:ui-test-junit4:$compose_version"
     testImplementation 'org.jetbrains.kotlin:kotlin-test:1.8.22'
-    
+
     androidTestImplementation 'androidx.test.ext:junit:1.3.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.7.0'
     androidTestImplementation "androidx.compose.ui:ui-test-junit4:$compose_version"
-    
+
     debugImplementation "androidx.compose.ui:ui-tooling:$compose_version"
     debugImplementation "androidx.compose.ui:ui-test-manifest:$compose_version"
 }
