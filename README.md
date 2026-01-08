@@ -15,6 +15,10 @@ Demo apps live in `demo_app` (Views) and `demo_app_compose` (Compose).
 
 This repository ships as a Gradle module. Choose one of the following:
 
+- Maven Central (recommended for consumers):
+  - In your app/module:
+    - `implementation("io.github.pinball83:masked-edittext:2.0.0")`
+
 - Project dependency (recommended for this repo):
   - In `settings.gradle`: `include(":masked-edittext")`
   - In your app module: `implementation(project(":masked-edittext"))`
@@ -24,7 +28,7 @@ This repository ships as a Gradle module. Choose one of the following:
   - Add `mavenLocal()` to repositories in your consuming project
   - Use the published coordinates printed by Gradle for the snapshot
 
-Note: The legacy Maven Central coordinates shown in older READMEs refer to the original library and may not reflect this refactor. Prefer the module or local snapshot flow above.
+Note: Older READMEs may refer to legacy coordinates from the original library; use the coordinates above for this Kotlin-first refactor.
 
 ## Usage (Views)
 
