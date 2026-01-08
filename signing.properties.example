@@ -1,0 +1,11 @@
+# Example file. Copy to `signing.properties` (root) or `masked-edittext/signing.properties` (module).
+# Do NOT commit the real `signing.properties` file (it is gitignored).
+
+# PGP signing
+signingKeyId=
+signingKey=
+signingPassword=
+
+# Sonatype user token (Maven Central)
+sonatypeUsername=
+sonatypePassword=

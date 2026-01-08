@@ -1,34 +1,67 @@
-# Masked-Edittext
+# Masked-EditText
 
-Modern, Kotlin-first input masking for Android with both classic View and Jetpack Compose APIs. This refactor keeps the original MaskedEditText API compatible while adding a shared mask core, a state machine for predictable behavior, and a composable `MaskedTextField`.
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.pinball83/masked-edittext)](https://central.sonatype.com/artifact/io.github.pinball83/masked-edittext/overview)
 
-Highlights:
+Modern, Kotlin-first input masking for Android with both classic Views and Jetpack Compose APIs. This refactor keeps the original `MaskedEditText` API compatible while adding a shared mask core, a state machine for predictable behavior, and a composable `MaskedTextField`.
+
 - Kotlin implementation with Java interop preserved
-- View widget `MaskedEditText` (backward compatible)
-- Jetpack Compose `MaskedTextField` with `MaskedOptions` and state holder
-- Cursor policy and state machine for reliable caret movement and validation
-- Extensive unit tests (Robolectric + Compose)
+- View widget: `MaskedEditText` (backward compatible)
+- Compose: `MaskedTextField` + `MaskedOptions` + reusable state holder
+- Cursor policy + state machine for reliable caret movement and validation
+- Tests: Robolectric + Compose
 
-Demo apps live in `demo_app` (Views) and `demo_app_compose` (Compose).
+Demo apps: `demo_app` (Views) and `demo_app_compose` (Compose).
+
+<img src="docs/images/app-example.gif" height="480" alt="Masked input samples demo" />
+
+## Requirements
+
+- Android `minSdk 21`
+- Java/Kotlin toolchain compatible with Java 17
+- Jetpack Compose is optional (only needed for the Compose API)
 
 ## Installation
 
-This repository ships as a Gradle module. Choose one of the following:
+This repository ships as a Gradle module. Choose one:
 
-- Project dependency (recommended for this repo):
-  - In `settings.gradle`: `include(":masked-edittext")`
-  - In your app module: `implementation(project(":masked-edittext"))`
+### Maven Central (recommended)
 
-- Local Maven snapshot for integration testing:
-  - Run: `./gradlew :masked-edittext:assembleRelease` (optional) and `./gradlew :masked-edittext:publishToMavenLocal`
-  - Add `mavenLocal()` to repositories in your consuming project
-  - Use the published coordinates printed by Gradle for the snapshot
+```gradle
+repositories {
+    mavenCentral()
+}
 
-Note: The legacy Maven Central coordinates shown in older READMEs refer to the original library and may not reflect this refactor. Prefer the module or local snapshot flow above.
+dependencies {
+    implementation("io.github.pinball83:masked-edittext:2.0.0")
+}
+```
 
-## Usage (Views)
+Replace `2.0.0` with the latest published version.
 
-XML
+### Project dependency (recommended when working in this repo)
+
+- In `settings.gradle`: `include(":masked-edittext")`
+- In your app module:
+
+```gradle
+dependencies {
+    implementation(project(":masked-edittext"))
+}
+```
+
+### Local Maven snapshot (integration testing)
+
+- Publish: `./gradlew :masked-edittext:publishToMavenLocal`
+- In your consuming project: add `mavenLocal()` to `repositories`
+- Use the published coordinates printed by Gradle for the snapshot
+
+Note: Older READMEs may refer to legacy coordinates from the original library; use the coordinates above for this Kotlin-first refactor.
+
+## Usage
+
+### Views (`MaskedEditText`)
+
+XML:
 
 ```xml
 <com.github.pinball83.maskededittext.MaskedEditText
@@ -43,7 +76,7 @@ XML
     app:required="false"/>
 ```
 
-Kotlin
+Kotlin:
 
 ```kotlin
 val maskedEditText = MaskedEditText.Builder(context)
@@ -64,9 +97,9 @@ Supported attributes: `mask`, `notMaskedSymbol`, `format`, `maskIcon`, `required
 
 Deprecated/no-op attributes kept for XML compatibility: `replacementChar`, `deleteChar`, `maskIconColor`.
 
-## Usage (Jetpack Compose)
+### Jetpack Compose (`MaskedTextField`)
 
-Idiomatic API with grouped options and a reusable state holder.
+Idiomatic API with grouped options and a reusable state holder:
 
 ```kotlin
 @Composable
@@ -85,7 +118,7 @@ fun PhoneField() {
 }
 ```
 
-Advanced: control state and react to transitions
+Advanced: control state and react to transitions:
 
 ```kotlin
 @Composable
@@ -111,7 +144,7 @@ fun Advanced() {
 
 ## Masks and Formats
 
-Common patterns:
+Common masks:
 - Phone: `8 (***) *** **-**`
 - Credit card: `**** **** **** ****`
 - SSN: `***-**-****`
@@ -126,20 +159,27 @@ Both View and Compose APIs use the same state machine internally. You can observ
 
 Key states: `EMPTY`, `PARTIAL`, `COMPLETE`, `INVALID`. Key events: typing, deletion, paste, focus changes, programmatic set, validate.
 
-See `MODERNIZATION.md` and `API_REFACTORING_GUIDE.md` for details.
-
-## Build, Test, Lint
-
-- Build AAR: `./gradlew assembleRelease`
-- Publish local snapshot: `./gradlew :masked-edittext:publishToMavenLocal`
-- Unit tests (Robolectric + Compose): `./gradlew test`
-- Instrumentation/Compose UI tests: `./gradlew connectedAndroidTest`
-- Lint: `./gradlew lint` (address or document findings)
+Docs:
+- `docs/API_REFACTORING_GUIDE.md`
+- `docs/MODERNIZATION.md`
+- `docs/MODERNIZATION_SUMMARY.md`
 
 ## Demo Apps
 
 - Views sample: `demo_app`
 - Compose sample: `demo_app_compose`
+
+## Development
+
+- Build AAR: `./gradlew assembleRelease`
+- Publish local snapshot: `./gradlew :masked-edittext:publishToMavenLocal`
+- Unit tests (Robolectric + Compose): `./gradlew test`
+- Instrumentation/Compose UI tests: `./gradlew connectedAndroidTest`
+- Lint: `./gradlew lint`
+
+## Release (Maintainers)
+
+See `docs/MAINTAINERS.md` for publishing/signing instructions.
 
 ## Migration from 1.x
 
@@ -149,7 +189,7 @@ See `MODERNIZATION.md` and `API_REFACTORING_GUIDE.md` for details.
 - Prefer `getFormattedText()` / `state.getFormattedValue()` when using custom `format`
 - Cursor handling is policy-driven and more predictable
 
-For a deep dive, see `MODERNIZATION_SUMMARY.md` and `MODERNIZATION.md`.
+For a deep dive, see `docs/MODERNIZATION_SUMMARY.md` and `docs/MODERNIZATION.md`.
 
 ## License
 
