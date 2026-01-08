@@ -32,7 +32,7 @@
 - Unified mask core shared by View and Compose.
 - New Compose API with grouped options (`MaskedOptions`, `MaskedVisualOptions`, `MaskedInputOptions`).
 - Deprecated/no-op XML attributes kept for compatibility: `replacementChar`, `deleteChar`, `maskIconColor`.
-- See `MODERNIZATION.md`, `MODERNIZATION_SUMMARY.md`, and `API_REFACTORING_GUIDE.md` for details and migration guidance.
+- See `docs/MODERNIZATION.md`, `docs/MODERNIZATION_SUMMARY.md`, and `docs/API_REFACTORING_GUIDE.md` for details and migration guidance.
 
 ## Commit & Pull Request Guidelines
 - Match concise, imperative history (`Update Kotlin version`, `Remove unused java code`); scope each commit to one concern.

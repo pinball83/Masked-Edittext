@@ -158,9 +158,9 @@ Both View and Compose APIs use the same state machine internally. You can observ
 Key states: `EMPTY`, `PARTIAL`, `COMPLETE`, `INVALID`. Key events: typing, deletion, paste, focus changes, programmatic set, validate.
 
 Docs:
-- `API_REFACTORING_GUIDE.md`
-- `MODERNIZATION.md`
-- `MODERNIZATION_SUMMARY.md`
+- `docs/API_REFACTORING_GUIDE.md`
+- `docs/MODERNIZATION.md`
+- `docs/MODERNIZATION_SUMMARY.md`
 
 ## Demo Apps
 
@@ -177,7 +177,7 @@ Docs:
 
 ## Release (Maintainers)
 
-See `MAINTAINERS.md` for publishing/signing instructions.
+See `docs/MAINTAINERS.md` for publishing/signing instructions.
 
 ## Migration from 1.x
 
@@ -187,7 +187,7 @@ See `MAINTAINERS.md` for publishing/signing instructions.
 - Prefer `getFormattedText()` / `state.getFormattedValue()` when using custom `format`
 - Cursor handling is policy-driven and more predictable
 
-For a deep dive, see `MODERNIZATION_SUMMARY.md` and `MODERNIZATION.md`.
+For a deep dive, see `docs/MODERNIZATION_SUMMARY.md` and `docs/MODERNIZATION.md`.
 
 ## License
 

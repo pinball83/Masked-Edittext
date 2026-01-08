@@ -193,8 +193,8 @@ MaskedTextField(
 ## 📚 Documentation
 
 ### Files Created
-- **MODERNIZATION.md**: Comprehensive feature documentation
-- **MODERNIZATION_SUMMARY.md**: This summary document
+- **docs/MODERNIZATION.md**: Comprehensive feature documentation
+- **docs/MODERNIZATION_SUMMARY.md**: This summary document
 - **MaskedTextFieldDemo.kt**: Interactive examples and previews
 - **Test Files**: Extensive test documentation through code
 

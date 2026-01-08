@@ -37,7 +37,7 @@
 - локальный `signing.properties` в корне репозитория (gitignored), или
 - локальный `masked-edittext/signing.properties` (gitignored)
 
-Шаблон: `signing.properties.example` (скопируйте в `signing.properties` и заполните).
+Шаблон: `signing.properties.example` (в корне репозитория; скопируйте в `signing.properties` и заполните).
 
 ## Важно про безопасность
 
