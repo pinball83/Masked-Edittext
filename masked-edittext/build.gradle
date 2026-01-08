@@ -74,6 +74,18 @@ def signingKeyId = findProperty('signingKeyId')?.toString()
 def signingKey = findProperty('signingKey')?.toString()
 def signingPassword = findProperty('signingPassword')?.toString()
 
+def signingProperties = new Properties()
+[
+        rootProject.file('signing.properties'),
+        project.file('signing.properties'),
+].findAll { it.exists() }.each { file ->
+    file.withInputStream { signingProperties.load(it) }
+}
+
+signingKeyId = signingKeyId ?: signingProperties.getProperty('signingKeyId')?.toString()
+signingKey = signingKey ?: signingProperties.getProperty('signingKey')?.toString()
+signingPassword = signingPassword ?: signingProperties.getProperty('signingPassword')?.toString()
+
 publishing {
     publications { }
 }
