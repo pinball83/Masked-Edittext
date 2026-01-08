@@ -5,7 +5,7 @@ apply plugin: 'org.jetbrains.kotlinx.kover'
 apply plugin: 'maven-publish'
 apply plugin: 'signing'
 
-version = (findProperty('VERSION') ?: findProperty('version') ?: '2.2.0').toString()
+version = (findProperty('VERSION') ?: findProperty('version') ?: '2.0.0').toString()
 group = (findProperty('GROUP') ?: 'io.github.pinball83').toString()
 
 android {
@@ -74,6 +74,34 @@ def signingKeyId = findProperty('signingKeyId')?.toString()
 def signingKey = findProperty('signingKey')?.toString()
 def signingPassword = findProperty('signingPassword')?.toString()
 
+def normalizeSigningKeyId = { String keyId ->
+    if (keyId == null) return null
+    def normalized = keyId.trim()
+    if (normalized.startsWith('0x') || normalized.startsWith('0X')) {
+        normalized = normalized.substring(2)
+    }
+    normalized = normalized.replaceAll("\\s+", "")
+    if (normalized.length() > 8) {
+        normalized = normalized.takeRight(8)
+    }
+    return normalized
+}
+
+def normalizeSigningKey = { String key ->
+    if (key == null) return null
+    def trimmed = key.trim()
+    if (trimmed.contains("BEGIN PGP PRIVATE KEY BLOCK")) return trimmed
+
+    try {
+        def decoded = new String(java.util.Base64.decoder.decode(trimmed), java.nio.charset.StandardCharsets.UTF_8).trim()
+        if (decoded.contains("BEGIN PGP PRIVATE KEY BLOCK")) return decoded
+    } catch (ignored) {
+        // Keep original value; Gradle signing will report a helpful error if it can't parse it.
+    }
+
+    return trimmed
+}
+
 def signingProperties = new Properties()
 [
         rootProject.file('signing.properties'),
@@ -85,6 +113,9 @@ def signingProperties = new Properties()
 signingKeyId = signingKeyId ?: signingProperties.getProperty('signingKeyId')?.toString()
 signingKey = signingKey ?: signingProperties.getProperty('signingKey')?.toString()
 signingPassword = signingPassword ?: signingProperties.getProperty('signingPassword')?.toString()
+
+signingKeyId = normalizeSigningKeyId(signingKeyId)
+signingKey = normalizeSigningKey(signingKey)
 
 publishing {
     publications { }

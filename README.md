@@ -136,6 +136,13 @@ See `MODERNIZATION.md` and `API_REFACTORING_GUIDE.md` for details.
 - Instrumentation/Compose UI tests: `./gradlew connectedAndroidTest`
 - Lint: `./gradlew lint` (address or document findings)
 
+## Release (Maintainers)
+
+Publishing uses the Gradle Nexus Publish Plugin and requires Sonatype credentials (a Sonatype *User Token*, not your account password).
+
+- Set `sonatypeUsername` and `sonatypePassword` (recommended in `~/.gradle/gradle.properties`), or export `OSSRH_USERNAME` / `OSSRH_PASSWORD`.
+- Run: `./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository`
+
 ## Demo Apps
 
 - Views sample: `demo_app`
