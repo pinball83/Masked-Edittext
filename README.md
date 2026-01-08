@@ -12,6 +12,8 @@ Modern, Kotlin-first input masking for Android with both classic Views and Jetpa
 
 Demo apps: `demo_app` (Views) and `demo_app_compose` (Compose).
 
+<img src="docs/images/app-example.gif" height="480" alt="Masked input samples demo" />
+
 ## Requirements
 
 - Android `minSdk 21`
