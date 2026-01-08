@@ -153,6 +153,19 @@ afterEvaluate {
                         connection = (findProperty('POM_SCM_CONNECTION') ?: 'scm:git:https://github.com/pinball83/Masked-Edittext.git').toString()
                         developerConnection = (findProperty('POM_SCM_DEV_CONNECTION') ?: 'scm:git:ssh://git@github.com/pinball83/Masked-Edittext.git').toString()
                     }
+
+                    developers {
+                        developer {
+                            id = (findProperty('POM_DEVELOPER_ID') ?: 'pinball83').toString()
+                            name = (findProperty('POM_DEVELOPER_NAME') ?: 'pinball83').toString()
+                            if (findProperty('POM_DEVELOPER_EMAIL') != null) {
+                                email = findProperty('POM_DEVELOPER_EMAIL').toString()
+                            }
+                            if (findProperty('POM_DEVELOPER_URL') != null) {
+                                url = findProperty('POM_DEVELOPER_URL').toString()
+                            }
+                        }
+                    }
                 }
             }
         }
